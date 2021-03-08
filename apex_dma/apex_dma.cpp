@@ -27,7 +27,6 @@ int tmp_all_spec = 0, allied_spectators = 0;
 int max_fov = 15;
 int toRead = 100;
 int aim = false;
-bool esp = false;
 bool item_glow = false;
 bool player_glow = false;
 extern bool aim_no_recoil;
@@ -37,14 +36,11 @@ extern float smooth;
 extern int bone;
 
 bool actions_t = false;
-bool esp_t = false;
 bool aim_t = false;
 bool vars_t = false;
 bool item_t = false;
 uint64_t g_Base;
 uint64_t c_Base;
-bool next = false;
-bool valid = false;
 bool lock = false;
 
 typedef struct player
@@ -70,7 +66,6 @@ struct Matrix
 	float matrix[16];
 };
 
-float lastvis_esp[100];
 float lastvis_aim[100];
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -268,232 +263,6 @@ void DoActions(WinProcess& mem)
 
 player players[100];
 
-static void EspLoop(WinProcess& mem)
-{
-	esp_t = true;
-	while(esp_t)
-	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		while(g_Base!=0 && c_Base!=0)
-		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-			if (esp)
-			{
-				valid = false;
-				switch (safe_level)
-				{
-				case 1:
-					if (spectators > 0)
-					{
-						next = true;
-						while(next && g_Base!=0 && c_Base!=0 && esp)
-						{
-							std::this_thread::sleep_for(std::chrono::milliseconds(1));
-						}
-						continue;
-					}
-					break;
-				case 2:
-					if (spectators+allied_spectators > 0)
-					{
-						next = true;
-						while(next && g_Base!=0 && c_Base!=0 && esp)
-						{
-							std::this_thread::sleep_for(std::chrono::milliseconds(1));
-						}
-						continue;
-					}
-					break;
-				default:
-					break;
-				}
-
-				uint64_t LocalPlayer = mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT);
-				if (LocalPlayer == 0)
-				{
-					next = true;
-					while(next && g_Base!=0 && c_Base!=0 && esp)
-					{
-						std::this_thread::sleep_for(std::chrono::milliseconds(1));
-					}
-					continue;
-				}
-				Entity LPlayer = getEntity(mem, LocalPlayer);
-				int team_player = LPlayer.getTeamId();
-				if (team_player < 0 || team_player>50)
-				{
-					next = true;
-					while(next && g_Base!=0 && c_Base!=0 && esp)
-					{
-						std::this_thread::sleep_for(std::chrono::milliseconds(1));
-					}
-					continue;
-				}
-				Vector LocalPlayerPosition = LPlayer.getPosition();
-
-				uint64_t viewRenderer = mem.Read<uint64_t>(g_Base + OFFSET_RENDER);
-				uint64_t viewMatrix = mem.Read<uint64_t>(viewRenderer + OFFSET_MATRIX);
-				Matrix m = mem.Read<Matrix>(viewMatrix);
-
-				uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
-				
-				memset(players,0,sizeof(players));
-				if(firing_range)
-				{
-					int c=0;
-					for (int i = 0; i < 10000; i++)
-					{
-						uint64_t centity = mem.Read<uint64_t>( entitylist + ((uint64_t)i << 5));
-						if (centity == 0)
-						{
-							continue;
-						}		
-						
-						if (LocalPlayer == centity)
-						{
-							continue;
-						}
-
-						Entity Target = getEntity(mem, centity);
-
-						if (!Target.isDummy())
-						{
-							continue;
-						}
-
-						if (!Target.isAlive())
-						{
-							continue;
-						}
-						int entity_team = Target.getTeamId();
-
-						Vector EntityPosition = Target.getPosition();
-						float dist = LocalPlayerPosition.DistTo(EntityPosition);
-						if (dist > max_dist || dist < 50.0f)
-						{	
-							continue;
-						}
-						
-						Vector bs = Vector();
-						WorldToScreen(EntityPosition, m.matrix, 1920, 1080, bs);
-						if (bs.x > 0 && bs.y > 0)
-						{
-							Vector hs = Vector();
-							Vector HeadPosition = Target.getBonePosition(mem, 8);
-							WorldToScreen(HeadPosition, m.matrix, 1920, 1080, hs);
-							float height = abs(abs(hs.y) - abs(bs.y));
-							float width = height / 2.0f;
-							float boxMiddle = bs.x - (width / 2.0f);
-							int health = Target.getHealth();
-							int shield = Target.getShield();
-							players[c] = 
-							{
-								dist,
-								entity_team,
-								boxMiddle,
-								hs.y,
-								width,
-								height,
-								bs.x,
-								bs.y,
-								0,
-								(Target.lastVisTime() > lastvis_esp[c]),
-								health,
-								shield	
-							};
-							Target.get_name(mem,g_Base, i-1, &players[c].name[0]);
-							lastvis_esp[c] = Target.lastVisTime();
-							valid = true;
-							c++;
-						}
-					}
-				}	
-				else
-				{
-					for (int i = 0; i < toRead; i++)
-					{
-						uint64_t centity = mem.Read<uint64_t>( entitylist + ((uint64_t)i << 5));
-						if (centity == 0)
-						{
-							continue;
-						}
-						
-						if (LocalPlayer == centity)
-						{
-							continue;
-						}
-
-						Entity Target = getEntity(mem, centity);
-						
-						if (!Target.isPlayer())
-						{
-							continue;
-						}
-
-						if (!Target.isAlive())
-						{
-							continue;
-						}
-
-						int entity_team = Target.getTeamId();
-						if (entity_team < 0 || entity_team>50 || entity_team == team_player)
-						{
-							continue;
-						}
-
-						Vector EntityPosition = Target.getPosition();
-						float dist = LocalPlayerPosition.DistTo(EntityPosition);
-						if (dist > max_dist || dist < 50.0f)
-						{	
-							continue;
-						}
-
-						Vector bs = Vector();
-						WorldToScreen(EntityPosition, m.matrix, 1920, 1080, bs);
-						if (bs.x > 0 && bs.y > 0)
-						{
-							Vector hs = Vector();
-							Vector HeadPosition = Target.getBonePosition(mem, 8);
-							WorldToScreen(HeadPosition, m.matrix, 1920, 1080, hs);
-							float height = abs(abs(hs.y) - abs(bs.y));
-							float width = height / 2.0f;
-							float boxMiddle = bs.x - (width / 2.0f);
-							int health = Target.getHealth();
-							int shield = Target.getShield();
-							
-							players[i] = 
-							{
-								dist,
-								entity_team,
-								boxMiddle,
-								hs.y,
-								width,
-								height,
-								bs.x,
-								bs.y,
-								Target.isKnocked(),
-								(Target.lastVisTime() > lastvis_esp[i]),
-								health,
-								shield
-							};
-							Target.get_name(mem, g_Base, i-1, &players[i].name[0]);
-							lastvis_esp[i] = Target.lastVisTime();
-							valid = true;
-						}
-					}
-				}
-
-				next = true;
-				while(next && g_Base!=0 && c_Base!=0 && esp)
-				{
-					std::this_thread::sleep_for(std::chrono::milliseconds(1));
-				}
-			}
-		}
-	}
-	esp_t = false;
-}
-
 static void AimbotLoop(WinProcess& mem)
 {
 	aim_t = true;
@@ -556,20 +325,16 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 	uint64_t spec_addr = mem.Read<uint64_t>(add_addr);
 	uint64_t all_spec_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t));
 	uint64_t aim_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*2);
-	uint64_t esp_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*3);
-	uint64_t safe_lev_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*4);
-	uint64_t aiming_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*5);
-	uint64_t g_Base_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*6);
-	uint64_t next_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*7);
-	uint64_t player_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*8);
-	uint64_t valid_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*9);
-	uint64_t max_dist_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*10);
-	uint64_t item_glow_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*11);
-	uint64_t player_glow_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*12);
-	uint64_t aim_no_recoil_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*13);
-	uint64_t smooth_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*14);
-	uint64_t max_fov_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*15);
-	uint64_t bone_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*16);
+	uint64_t safe_lev_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*3);
+	uint64_t aiming_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*4);
+	uint64_t g_Base_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*5);
+	uint64_t max_dist_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*6);
+	uint64_t item_glow_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*7);
+	uint64_t player_glow_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*8);
+	uint64_t aim_no_recoil_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*9);
+	uint64_t smooth_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*10);
+	uint64_t max_fov_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*11);
+	uint64_t bone_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*12);
 
 	if(mem.Read<int>(spec_addr)!=1)
 	{
@@ -591,7 +356,6 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 			mem.Write<uint64_t>(g_Base_addr, g_Base);
 
 			aim = mem.Read<int>(aim_addr);
-			esp = mem.Read<bool>(esp_addr);
 			safe_level = mem.Read<int>(safe_lev_addr);
 			aiming = mem.Read<bool>(aiming_addr);
 			max_dist = mem.Read<float>(max_dist_addr);
@@ -601,20 +365,6 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 			smooth = mem.Read<float>(smooth_addr);
 			max_fov = mem.Read<float>(max_fov_addr);
 			bone = mem.Read<int>(bone_addr);
-
-			if(esp && next)
-			{
-				if(valid)
-					mem.WriteMem<player>(player_addr, players, sizeof(players));
-				mem.Write<bool>(valid_addr, valid);
-				mem.Write<bool>(next_addr, true); //next
- 
-				while (mem.Read<bool>(next_addr) && g_Base!=0 && c_Base!=0)
-				{
-					std::this_thread::sleep_for(std::chrono::milliseconds(1));
-				}
-				next = false;
-			}
 		}
 	}
 	vars_t = false;
@@ -704,14 +454,13 @@ static void init()
 		bool apex_found = false;
 		bool client_found = false;
 		//Client "add" offset
-		uint64_t add_off = 0x3e870;
+		uint64_t add_off = 0xABCDE;
 		
 		while(active)
 		{
 			if(!apex_found)
 			{
 				aim_t = false;
-				esp_t = false;
 				actions_t = false;
 				item_t = false;
 				std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -730,11 +479,9 @@ static void init()
 							fprintf(out, "\nApex found %lx:\t%s\n", i.proc.pid, i.proc.name);
 							fprintf(out, "\tBase:\t%lx\tMagic:\t%hx (valid: %hhx)\n", peb.ImageBaseAddress, magic, (char)(magic == IMAGE_DOS_SIGNATURE));
 							std::thread aimbot(AimbotLoop, std::ref(i));
-							std::thread esp_th(EspLoop, std::ref(i));
 							std::thread actions(DoActions, std::ref(i));
 							std::thread itemglow(item_glow_t, std::ref(i));
 							aimbot.detach();
-							esp_th.detach();
 							actions.detach();
 							itemglow.detach();
 						}
@@ -766,7 +513,6 @@ static void init()
 					}
 				}
 			}
-
 
 			if(apex_found || client_found)
 			{
