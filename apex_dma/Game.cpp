@@ -1,19 +1,18 @@
 #include "prediction.h"
-extern bool firing_range;
-float smooth = 12.0f;
-bool aim_no_recoil = true;
-int bone = 2;
+float maxHorizontalDistFromBone = 5.0f;
+float maxVerticalDistFromBone = 10.0f;
 
-uint64_t Entity::Observing(WinProcess& mem, uint64_t entitylist)
+bool Entity::Observing(WinProcess& mem, uint64_t entitylist)
 {
-	uint64_t index = *(uint64_t*)(buffer + OFFSET_OBSERVING_TARGET);
+	/*uint64_t index = *(uint64_t*)(buffer + OFFSET_OBSERVING_TARGET);
 	index &= ENT_ENTRY_MASK;
 	if (index > 0)
 	{
 		uint64_t centity2 = mem.Read<uint64_t>(entitylist + ((uint64_t)index << 5));
 		return centity2;
 	}
-	return 0;
+	return 0;*/
+	return *(bool*)(buffer + OFFSET_OBSERVER_MODE);
 }
 
 int Entity::getTeamId()
@@ -181,7 +180,7 @@ float CalculateFov(Entity& from, Entity& target)
 	return Math::GetFov(ViewAngles, Angle);
 }
 
-QAngle CalculateBestBoneAim(WinProcess& mem, Entity& from, uintptr_t t, float max_fov)
+QAngle CalculateBestBoneAim(WinProcess& mem, Entity& from, uintptr_t t, float max_fov, int bone, float smooth, bool aim_no_recoil, bool firing_range)
 {
 	Entity target = getEntity(mem, t);
 	if(firing_range)
