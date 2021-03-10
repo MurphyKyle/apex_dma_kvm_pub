@@ -74,10 +74,10 @@ float lastvis_aim[100];
 void ProcessPlayer(WinProcess& mem, Entity& LPlayer, Entity& target, uint64_t entitylist, int index)
 {
 	int entity_team = target.getTeamId();
-	uint64_t obs = target.Observing(mem, entitylist);
+	bool obs = target.Observing(mem, entitylist);
 	if (obs)
 	{
-		if(obs == LPlayer.ptr)
+		/*if(obs == LPlayer.ptr)
 		{
 			if (entity_team == team_player)
 			{
@@ -87,7 +87,8 @@ void ProcessPlayer(WinProcess& mem, Entity& LPlayer, Entity& target, uint64_t en
 			{
 				tmp_spec++;
 			}
-		}
+		}*/
+		tmp_spec++;
 		return;
 	}
 	Vector EntityPosition = target.getPosition();
