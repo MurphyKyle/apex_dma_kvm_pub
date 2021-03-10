@@ -14,7 +14,6 @@
 
 FILE* dfile;
 
-bool firing_range = false;
 bool active = true;
 uintptr_t aimentity = 0;
 uintptr_t tmp_aimentity = 0;
@@ -24,16 +23,18 @@ float max_dist = 200.0f*40.0f;
 int team_player = 0;
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
-int max_fov = 15;
+int max_fov = 5;
 int toRead = 100;
-int aim = false;
+int aim = 0;
 bool item_glow = false;
 bool player_glow = false;
-extern bool aim_no_recoil;
-int safe_level = 0;
+bool firing_range = false;
+bool ally_targets = false;
+bool aim_no_recoil;
+int safe_level = 1;
 bool aiming = false;
-extern float smooth;
-extern int bone;
+float smooth;
+int bone;
 
 bool actions_t = false;
 bool aim_t = false;
@@ -303,7 +304,7 @@ static void AimbotLoop(WinProcess& mem)
 				uint64_t LocalPlayer = mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT);
 				if (LocalPlayer == 0) continue;
 				Entity LPlayer = getEntity(mem, LocalPlayer);
-				QAngle Angles = CalculateBestBoneAim(mem, LPlayer, aimentity, max_fov);
+				QAngle Angles = CalculateBestBoneAim(mem, LPlayer, aimentity, max_fov, bone, smooth, aim_no_recoil, firing_range);
 				if (Angles.x == 0 && Angles.y == 0)
 				{
 					lock=false;
@@ -317,24 +318,91 @@ static void AimbotLoop(WinProcess& mem)
 	aim_t = false;
 }
 
+static void PrintVarsToConsole() {
+	printf("\n Spectators\t\t\t\t\t\t\t     Glow\n");
+	printf("Enemy  Ally   Smooth\t   Aimbot\t     If Spectators\t Items  Players\n");
+
+	// spectators
+	printf(" %d\t%d\t", spectators, allied_spectators);
+
+	// smooth
+	printf("%d\t", (int)smooth);
+
+	// aim definition
+	switch (aim)
+	{
+	case 0:
+		printf("ON - No Vis-check    ");
+		break;
+	case 1:
+		printf("ON - Vis-check\t");
+		break;
+	case 2:
+		printf("OFF\t\t");
+		break;
+	default:
+		printf("--\t\t");
+		break;
+	}
+
+	// safe level definition
+	switch (safe_level)
+	{
+	case 0:
+		printf("Keep ON\t\t");
+		break;
+	case 1:
+		printf("OFF with enemy\t");
+		break;
+	case 2:
+		printf("OFF with any\t");
+		break;
+	default:
+		printf("--\t\t");
+		break;
+	}
+	// glow items + key
+	printf((item_glow ? "  ON\t" : "  OFF\t"));
+
+	// glow players + key
+	printf((player_glow ? " ON\n" : " OFF\n"));
+
+	// new string
+	printf("\nFiring Range\tTarget Allies\tNo-recoil\tMax Distance\n");
+
+	// firing range + key
+	printf("   OFF\t");
+
+	// target allies + key
+	printf("\t   OFF\t");
+
+	// recoil + key
+	printf((aim_no_recoil ? "\t  ON\t" : "\t  OFF\t"));
+
+	// distance
+	printf("\t%d\n\n", (int)max_dist);
+}
+
 static void set_vars(WinProcess& mem, uint64_t add_addr)
 {
 	printf("Reading client vars...\n");
 	std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	//Get addresses of client vars
-	uint64_t spec_addr = mem.Read<uint64_t>(add_addr);
-	uint64_t all_spec_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t));
-	uint64_t aim_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*2);
-	uint64_t safe_lev_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*3);
-	uint64_t aiming_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*4);
-	uint64_t g_Base_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*5);
-	uint64_t max_dist_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*6);
-	uint64_t item_glow_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*7);
-	uint64_t player_glow_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*8);
+	uint64_t spec_addr 			= mem.Read<uint64_t>(add_addr);
+	uint64_t all_spec_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t));
+	uint64_t aim_addr 			= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*2);
+	uint64_t safe_lev_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*3);
+	uint64_t aiming_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*4);
+	uint64_t g_Base_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*5);
+	uint64_t max_dist_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*6);
+	uint64_t item_glow_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*7);
+	uint64_t player_glow_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*8);
 	uint64_t aim_no_recoil_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*9);
-	uint64_t smooth_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*10);
-	uint64_t max_fov_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*11);
-	uint64_t bone_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*12);
+	uint64_t smooth_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*10);
+	uint64_t max_fov_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*11);
+	uint64_t bone_addr 			= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*12);
+	uint64_t firing_range_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*13);
+	uint64_t ally_targets_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*14);
 
 	if(mem.Read<int>(spec_addr)!=1)
 	{
@@ -355,16 +423,18 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 			mem.Write<int>(all_spec_addr, allied_spectators);
 			mem.Write<uint64_t>(g_Base_addr, g_Base);
 
-			aim = mem.Read<int>(aim_addr);
-			safe_level = mem.Read<int>(safe_lev_addr);
-			aiming = mem.Read<bool>(aiming_addr);
-			max_dist = mem.Read<float>(max_dist_addr);
-			item_glow = mem.Read<bool>(item_glow_addr);
-			player_glow = mem.Read<bool>(player_glow_addr);
-			aim_no_recoil = mem.Read<bool>(aim_no_recoil_addr);
-			smooth = mem.Read<float>(smooth_addr);
-			max_fov = mem.Read<float>(max_fov_addr);
-			bone = mem.Read<int>(bone_addr);
+			aim 			= mem.Read<int>(aim_addr);
+			safe_level 		= mem.Read<int>(safe_lev_addr);
+			aiming 			= mem.Read<bool>(aiming_addr);
+			max_dist 		= mem.Read<float>(max_dist_addr);
+			item_glow 		= mem.Read<bool>(item_glow_addr);
+			player_glow 	= mem.Read<bool>(player_glow_addr);
+			aim_no_recoil 	= mem.Read<bool>(aim_no_recoil_addr);
+			smooth 			= mem.Read<float>(smooth_addr);
+			max_fov 		= mem.Read<float>(max_fov_addr);
+			bone 			= mem.Read<int>(bone_addr);
+			firing_range	= mem.Read<bool>(firing_range_addr);
+			ally_targets	= mem.Read<bool>(ally_targets_addr);
 		}
 	}
 	vars_t = false;
@@ -428,6 +498,7 @@ static void init()
 	FILE* out = stdout;
 	const char* cl_proc = "client_ap.exe";
 	const char* ap_proc = "r5apex.exe";
+	int currentCount = 0;
 
 	pid_t pid;
 	#if (LMODE() == MODE_EXTERNAL())
@@ -497,7 +568,7 @@ static void init()
 				ctx_client.processList.Refresh();	
 				for (auto& i : ctx_client.processList)
 				{
-					if (!strcasecmp(cl_proc, i.proc.name))
+					if (!strcasecmp(cl_proc, i.proc.name) || !strcasecmp(cl_proc2, i.proc.name))
 					{	
 						PEB peb = i.GetPeb();
 						short magic = i.Read<short>(peb.ImageBaseAddress);
@@ -522,7 +593,7 @@ static void init()
 				ctx_refresh.processList.Refresh();
 				for (auto& i : ctx_refresh.processList)
 				{
-					if (!strcasecmp(cl_proc, i.proc.name))
+					if (!strcasecmp(cl_proc, i.proc.name) || !strcasecmp(cl_proc2, i.proc.name))
 					{
 						PEB peb = i.GetPeb();
 						if(peb.ImageBaseAddress != 0)
@@ -561,6 +632,13 @@ static void init()
 						c_Base = 0;
 					}
 				}
+
+				if (currentCount == 50) 
+				{
+					PrintVarsToConsole();
+					currentCount = 0;
+				}
+				currentCount++;
 			}
 		}
 	} catch (VMException& e)
