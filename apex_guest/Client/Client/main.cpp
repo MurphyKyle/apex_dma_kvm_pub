@@ -18,29 +18,45 @@ typedef struct player
 }player;
 
 int aim_key = VK_RBUTTON;
+int alt_aim_key = 0x37;
 bool active = true;
 bool ready = false;
 int spectators = 1; //write
 int allied_spectators = 1; //write
-int aim = 0; //read
-int safe_level = 0; //read
-bool item_glow = false;
-bool player_glow = false;
-bool aim_no_recoil = true;
 bool aiming = false; //read
 uint64_t g_Base = 0; //write
 float max_dist = 200.0f*40.0f; //read
-float smooth = 12.0f;
-float max_fov = 15.0f;
-int bone = 2;
+float max_fov = 5.0f;
+int bone = 3;
 
-uint64_t add[13];
+uint64_t add[15];
 player players[100];
 
-bool k_f5 = 0;
-bool k_f6 = 0;
-bool k_f7 = 0;
-bool k_f8 = 0;
+int aim = 2; //read
+bool updateAim_pressed = 0;
+
+float smooth = 50.0f;
+bool incSmooth_pressed = 0;
+bool decSmooth_pressed = 0;
+
+int safe_level = 0; //read
+bool updateSafeLevel_pressed = 0;
+
+bool item_glow = true;
+bool toggleItems_pressed = 0;
+
+bool player_glow = true;
+bool togglePlayers_pressed = 0;
+
+bool aim_no_recoil = false;
+bool toggleNoRecoil_pressed = 0;
+
+bool firing_range = false;
+bool toggleFiringRange_pressed = 0;
+
+bool ally_targets = false;
+bool toggleAllyTargets_pressed = 0;
+
 
 bool IsKeyDown(int vk)
 {
@@ -62,16 +78,25 @@ int main(int argc, char** argv)
 	add[10] = (uintptr_t)&smooth;
 	add[11] = (uintptr_t)&max_fov;
 	add[12] = (uintptr_t)&bone;
+	add[13] = (uintptr_t)&firing_range;
+	add[14] = (uintptr_t)&ally_targets;
+
 	printf(XorStr("add_addr: 0x%I64x\n"), (uint64_t)&add[0] - (uint64_t)GetModuleHandle(NULL));
-	printf(XorStr("Waiting for host process...\n"));
+	printf(XorStr("Waiting for host process...\n\n"));
+	
+	printf(XorStr("Smooth\t\t - \t Numpad +/-\n"));
+	printf(XorStr("Aimbot\t\t - \t '0'\n"));
+	printf(XorStr("Safe Level\t - \t '9'\n"));
+	printf(XorStr("Item Glow\t - \t '8'\n"));
+	printf(XorStr("Player Glow\t - \t Numpad *\n"));
+	printf(XorStr("Firing Range\t - \t Numpad /\n"));
+	printf(XorStr("Target Allies\t - \t Numpad 7\n"));
+	printf(XorStr("No-recoil\t - \t Numpad 9\n"));
+	printf(XorStr("Max Distance\t - \t Arrows LEFT/RIGHT\n"));
+
 	while (spectators == 1)
 	{
-		if (IsKeyDown(VK_F4))
-		{
-			active = false;
-			break;
-		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		std::this_thread::sleep_for(std::chrono::milliseconds(2));
 	}
 	if (active)
 	{
@@ -81,96 +106,120 @@ int main(int argc, char** argv)
 		
 	while (active)
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		if (IsKeyDown(VK_F4))
+		if (IsKeyDown(VK_NUMPAD9) && toggleNoRecoil_pressed == 0) // NUM-9 key
 		{
-			active = false;
+			toggleNoRecoil_pressed = 1;
+			aim_no_recoil = !aim_no_recoil;
 		}
+		else if (!IsKeyDown(0x38) && toggleNoRecoil_pressed == 1) { toggleNoRecoil_pressed = 0; }
 
-		if (IsKeyDown(VK_F5) && k_f5 == 0)
+		if (IsKeyDown(VK_MULTIPLY) && togglePlayers_pressed == 0) // NUM-* key
 		{
-			k_f5 = 1;
-			esp = !esp;
+			togglePlayers_pressed = 1;
+			player_glow = !player_glow;
 		}
-		else if (!IsKeyDown(VK_F5) && k_f5 == 1)
-		{
-			k_f5 = 0;
-		}
+		else if (!IsKeyDown(0x38) && togglePlayers_pressed == 1) { togglePlayers_pressed = 0; }
 
-		if (IsKeyDown(VK_F6) && k_f6 == 0)
+		if (IsKeyDown(0x38) && toggleItems_pressed == 0) // 8 key
 		{
-			k_f6 = 1;
+			toggleItems_pressed = 1;
+			item_glow = !item_glow;
+		}
+		else if (!IsKeyDown(0x38) && toggleItems_pressed == 1) { toggleItems_pressed = 0; }
+
+		if (IsKeyDown(VK_NUMPAD7) && toggleAllyTargets_pressed == 0) // NUM-7 key
+		{
+			toggleAllyTargets_pressed = 1;
+			ally_targets = !ally_targets;
+		}
+		else if (!IsKeyDown(0x38) && toggleAllyTargets_pressed == 1) { toggleAllyTargets_pressed = 0; }
+
+		if (IsKeyDown(VK_DIVIDE) && toggleFiringRange_pressed == 0) // NUM-/ key
+		{
+			toggleFiringRange_pressed = 1;
+			firing_range = !firing_range;
+		}
+		else if (!IsKeyDown(0x38) && toggleFiringRange_pressed == 1) { toggleFiringRange_pressed = 0; }
+
+		if (IsKeyDown(VK_ADD) && incSmooth_pressed == 0) 
+		{
+			incSmooth_pressed = 1;
+			smooth += 5;
+			if (smooth > 100) smooth = 100;
+		}
+		else if (!IsKeyDown(VK_ADD) && incSmooth_pressed == 1) { incSmooth_pressed = 0;	}
+		
+		if (IsKeyDown(VK_SUBTRACT) && decSmooth_pressed == 0) 
+		{
+			decSmooth_pressed = 1;
+			smooth -= 5;
+			if (smooth < 15) smooth = 15;
+		}
+		else if (!IsKeyDown(VK_SUBTRACT) && decSmooth_pressed == 1) { incSmooth_pressed = 0; }
+
+		if (IsKeyDown(0x30) && updateAim_pressed == 0) // 0 key
+		{
+			updateAim_pressed = 1;
 			switch (aim)
 			{
 			case 0:
-				aim = 1;
+				aim = 1; // on - no visibility check
 				break;
 			case 1:
-				aim = 2;
+				aim = 2; // on - use visibility check
 				break;
 			case 2:
-				aim = 0;
+				aim = 0; // off
 				break;
 			default:
 				break;
 			}
 		}
-		else if (!IsKeyDown(VK_F6) && k_f6 == 1)
-		{
-			k_f6 = 0;
-		}
+		else if (!IsKeyDown(0x30) && updateAim_pressed == 1) { updateAim_pressed = 0; }
 
-		if (IsKeyDown(VK_F7) && k_f7 == 0)
+		if (IsKeyDown(0x39) && updateSafeLevel_pressed == 0) // 9 key
 		{
-			k_f7 = 1;
+			updateSafeLevel_pressed = 1;
 			switch (safe_level)
 			{
 			case 0:
-				safe_level = 1;
+				safe_level = 1; // disable with enemy spectators
 				break;
 			case 1:
-				safe_level = 2;
+				safe_level = 2; // disable with enemy OR ally spectators
 				break;
 			case 2:
-				safe_level = 0;
+				safe_level = 0; // keep enabled
 				break;
 			default:
 				break;
 			}
 		}
-		else if (!IsKeyDown(VK_F7) && k_f7 == 1)
-		{
-			k_f7 = 0;
-		}
-
-		if (IsKeyDown(VK_F8) && k_f8 == 0)
-		{
-			k_f8 = 1;
-			item_glow = !item_glow;
-		}
-		else if (!IsKeyDown(VK_F8) && k_f8 == 1)
-		{
-			k_f8 = 0;
-		}
+		else if (!IsKeyDown(0x39) && updateSafeLevel_pressed == 1) { updateSafeLevel_pressed = 0; }
 
 		if (IsKeyDown(VK_LEFT))
 		{
-			if (max_dist > 100.0f * 40.0f)
-				max_dist -= 50.0f * 40.0f;
-			std::this_thread::sleep_for(std::chrono::milliseconds(130));
+			if (max_dist > 100.0f * 40.0f) // can update if over 4,000f
+				max_dist -= 50.0f * 40.0f; // move by 2,000f
+			std::this_thread::sleep_for(std::chrono::milliseconds(140));
 		}
 
 		if (IsKeyDown(VK_RIGHT))
 		{
-			if (max_dist < 800.0f * 40.0f)
-				max_dist += 50.0f * 40.0f;
-			std::this_thread::sleep_for(std::chrono::milliseconds(130));
+			if (max_dist < 800.0f * 40.0f) // can update if under 32,000f
+				max_dist += 50.0f * 40.0f; // move by 2,000f
+			std::this_thread::sleep_for(std::chrono::milliseconds(140));
 		}
 
-		if (IsKeyDown(aim_key))
+		if (IsKeyDown(aim_key) || IsKeyDown(alt_aim_key))
+		{
 			aiming = true;
+		}
 		else
+		{
 			aiming = false;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(2));
 	}
 	ready = false;
 	return 0;
