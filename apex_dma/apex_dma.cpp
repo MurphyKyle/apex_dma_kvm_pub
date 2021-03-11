@@ -26,15 +26,16 @@ int tmp_all_spec = 0, allied_spectators = 0;
 int max_fov = 5;
 int toRead = 100;
 int aim = 0;
-bool item_glow = false;
-bool player_glow = false;
+bool item_glow = true;
+bool player_glow = true;
 bool firing_range = false;
-bool ally_targets = false;
-bool aim_no_recoil;
-int safe_level = 1;
+bool target_allies = false;
+bool aim_no_recoil = false;
+int safe_level = 2;
 bool aiming = false;
-float smooth;
-int bone;
+float smooth = 50.0f;
+int bone = 3;
+bool walls = false;
 
 bool actions_t = false;
 bool aim_t = false;
@@ -339,10 +340,10 @@ static void PrintVarsToConsole() {
 		printf("ON - Vis-check\t");
 		break;
 	case 2:
-		printf("OFF\t\t");
+		printf("OFF\t\t\t");
 		break;
 	default:
-		printf("--\t\t");
+		printf("--\t\t\t");
 		break;
 	}
 
@@ -362,6 +363,7 @@ static void PrintVarsToConsole() {
 		printf("--\t\t");
 		break;
 	}
+	
 	// glow items + key
 	printf((item_glow ? "  ON\t" : "  OFF\t"));
 
@@ -369,13 +371,13 @@ static void PrintVarsToConsole() {
 	printf((player_glow ? " ON\n" : " OFF\n"));
 
 	// new string
-	printf("\nFiring Range\tTarget Allies\tNo-recoil\tMax Distance\n");
+	printf("\nFiring Range\tTarget Allies\tNo-recoil    Max Distance\n");
 
 	// firing range + key
-	printf("   OFF\t");
+	printf((firing_range ? "   ON\t" : "   OFF\t"));
 
 	// target allies + key
-	printf("\t   OFF\t");
+	printf((target_allies ? "   ON\t" : "   OFF\t"));
 
 	// recoil + key
 	printf((aim_no_recoil ? "\t  ON\t" : "\t  OFF\t"));
@@ -499,7 +501,7 @@ static void init()
 	FILE* out = stdout;
 	const char* cl_proc = "client_ap.exe";
 	const char* ap_proc = "r5apex.exe";
-	int currentCount = 0;
+	bool currentCount = 0;
 
 	pid_t pid;
 	#if (LMODE() == MODE_EXTERNAL())
@@ -535,7 +537,6 @@ static void init()
 				aim_t = false;
 				actions_t = false;
 				item_t = false;
-				std::this_thread::sleep_for(std::chrono::seconds(1));
 				printf("Searching apex process...\n");
 				ctx_apex.processList.Refresh();
 				for (auto& i : ctx_apex.processList)
@@ -564,12 +565,11 @@ static void init()
 			if(!client_found)
 			{
 				vars_t = false;
-				std::this_thread::sleep_for(std::chrono::seconds(1));
 				printf("Searching client process...\n");
 				ctx_client.processList.Refresh();	
 				for (auto& i : ctx_client.processList)
 				{
-					if (!strcasecmp(cl_proc, i.proc.name) || !strcasecmp(cl_proc2, i.proc.name))
+					if (!strcasecmp(cl_proc, i.proc.name))
 					{	
 						PEB peb = i.GetPeb();
 						short magic = i.Read<short>(peb.ImageBaseAddress);
@@ -594,7 +594,7 @@ static void init()
 				ctx_refresh.processList.Refresh();
 				for (auto& i : ctx_refresh.processList)
 				{
-					if (!strcasecmp(cl_proc, i.proc.name) || !strcasecmp(cl_proc2, i.proc.name))
+					if (!strcasecmp(cl_proc, i.proc.name))
 					{
 						PEB peb = i.GetPeb();
 						if(peb.ImageBaseAddress != 0)
@@ -634,12 +634,12 @@ static void init()
 					}
 				}
 
-				if (currentCount == 50) 
+				if (currentCount)
 				{
 					PrintVarsToConsole();
 					currentCount = 0;
 				}
-				currentCount++;
+				currentCount = 1;
 			}
 		}
 	} catch (VMException& e)
