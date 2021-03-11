@@ -39,7 +39,7 @@ float smooth = 50.0f;
 bool incSmooth_pressed = 0;
 bool decSmooth_pressed = 0;
 
-int safe_level = 0; //read
+int safe_level = 2; //read
 bool updateSafeLevel_pressed = 0;
 
 bool item_glow = true;
@@ -155,7 +155,7 @@ int main(int argc, char** argv)
 			smooth -= 5;
 			if (smooth < 15) smooth = 15;
 		}
-		else if (!IsKeyDown(VK_SUBTRACT) && decSmooth_pressed == 1) { incSmooth_pressed = 0; }
+		else if (!IsKeyDown(VK_SUBTRACT) && decSmooth_pressed == 1) { decSmooth_pressed = 0; }
 
 		if (IsKeyDown(0x30) && updateAim_pressed == 0) // 0 key
 		{
