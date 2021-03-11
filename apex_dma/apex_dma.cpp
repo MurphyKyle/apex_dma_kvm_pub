@@ -182,7 +182,7 @@ void DoActions(WinProcess& mem)
 
 					if(player_glow && !Target.isGlowing())
 					{
-						Target.enableGlow(mem);
+						Target.enableGlow(mem, walls);
 					}
 					else if(!player_glow && Target.isGlowing())
 					{
@@ -243,7 +243,7 @@ void DoActions(WinProcess& mem)
 
 					if(player_glow && !Target.isGlowing())
 					{
-						Target.enableGlow(mem);
+						Target.enableGlow(mem, walls);
 					}
 					else if(!player_glow && Target.isGlowing())
 					{
@@ -405,7 +405,8 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 	uint64_t max_fov_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*11);
 	uint64_t bone_addr 			= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*12);
 	uint64_t firing_range_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*13);
-	uint64_t target_allies_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*14);
+	uint64_t target_allies_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*14);
+	//uint64_t walls_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*15);
 
 	if(mem.Read<int>(spec_addr)!=1)
 	{
@@ -438,6 +439,7 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 			bone 			= mem.Read<int>(bone_addr);
 			firing_range	= mem.Read<bool>(firing_range_addr);
 			target_allies	= mem.Read<bool>(target_allies_addr);
+			//walls			= mem.Read<bool>(walls_addr);
 		}
 	}
 	vars_t = false;
