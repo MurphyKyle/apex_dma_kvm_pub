@@ -20,7 +20,7 @@ uintptr_t tmp_aimentity = 0;
 uintptr_t lastaimentity = 0;
 float max = 999.0f;
 float max_dist = 200.0f*40.0f;
-int team_player = 0;
+int localTeamId = 0;
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
 int max_fov = 5;
@@ -79,7 +79,7 @@ void ProcessPlayer(WinProcess& mem, Entity& LPlayer, Entity& target, uint64_t en
 	{
 		/*if(obs == LPlayer.ptr)
 		{
-			if (entity_team == team_player)
+			if (entity_team == localTeamId)
 			{
 				tmp_all_spec++;
 			}
@@ -96,12 +96,12 @@ void ProcessPlayer(WinProcess& mem, Entity& LPlayer, Entity& target, uint64_t en
 	float dist = LocalPlayerPosition.DistTo(EntityPosition);
 	if (dist > max_dist) return;
 
-	if (!target.isAlive())
-		return;
+	if (!target.isAlive()) return;
 
-	if(!firing_range)
-		if (entity_team < 0 || entity_team>50 || entity_team == team_player) return;
+	if (!firing_range && (entity_team < 0 || entity_team>50)) return;
 	
+	if (!target_allies && (entity_team == localTeamId)) return;
+
 	if(aim==2)
 	{
 		if((target.lastVisTime() > lastvis_aim[index]))
@@ -147,8 +147,8 @@ void DoActions(WinProcess& mem)
 
 			Entity LPlayer = getEntity(mem, LocalPlayer);
 
-			team_player = LPlayer.getTeamId();
-			if (team_player < 0 || team_player>50)
+			localTeamId = LPlayer.getTeamId();
+			if (localTeamId < 0 || localTeamId>50)
 			{
 				continue;
 			}
@@ -174,7 +174,7 @@ void DoActions(WinProcess& mem)
 					if (LocalPlayer == centity) continue;
 
 					Entity Target = getEntity(mem, centity);
-					if (!Target.isDummy())
+					if (!Target.isDummy() && !target_allies)
 					{
 						continue;
 					}
@@ -209,7 +209,7 @@ void DoActions(WinProcess& mem)
 					ProcessPlayer(mem, LPlayer, Target, entitylist, i);
 
 					int entity_team = Target.getTeamId();
-					if (entity_team == team_player)
+					if (!target_allies && (entity_team == localTeamId))
 					{
 						continue;
 					}
@@ -403,7 +403,7 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 	uint64_t max_fov_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*11);
 	uint64_t bone_addr 			= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*12);
 	uint64_t firing_range_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*13);
-	uint64_t ally_targets_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*14);
+	uint64_t target_allies_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*14);
 
 	if(mem.Read<int>(spec_addr)!=1)
 	{
@@ -435,7 +435,7 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 			max_fov 		= mem.Read<float>(max_fov_addr);
 			bone 			= mem.Read<int>(bone_addr);
 			firing_range	= mem.Read<bool>(firing_range_addr);
-			ally_targets	= mem.Read<bool>(ally_targets_addr);
+			target_allies	= mem.Read<bool>(target_allies_addr);
 		}
 	}
 	vars_t = false;

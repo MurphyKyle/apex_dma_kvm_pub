@@ -38,7 +38,7 @@ public:
 	QAngle GetRecoil();
 	Vector GetViewAnglesV();
 
-	void enableGlow(WinProcess& mem);
+	void enableGlow(WinProcess& mem, bool walls);
 	void disableGlow(WinProcess& mem);
 	void SetViewAngles(WinProcess& mem, SVector angles);
 	void SetViewAngles(WinProcess& mem, QAngle& angles);

@@ -104,12 +104,12 @@ bool Entity::isZooming()
 	return *(int*)(buffer + OFFSET_ZOOMING) == 1;
 }
 
-void Entity::enableGlow(WinProcess& mem)
+void Entity::enableGlow(WinProcess& mem, bool walls)
 {
 	mem.Write<int>(ptr + OFFSET_GLOW_T1, 16256);
 	mem.Write<int>(ptr + OFFSET_GLOW_T2, 1193322764);
 	mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 7);
-	mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 2);
+	mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, (walls ? 2 : 5));
 }
 
 void Entity::disableGlow(WinProcess& mem)
