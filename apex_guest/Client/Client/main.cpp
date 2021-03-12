@@ -45,8 +45,8 @@ bool updateSafeLevel_pressed = 0;
 bool item_glow = true;
 bool toggleItems_pressed = 0;
 
-bool player_glow = true;
-bool togglePlayers_pressed = 0;
+int player_glow = 1;
+bool updatePlayerGlow_pressed = 0;
 
 bool aim_no_recoil = false;
 bool toggleNoRecoil_pressed = 0;
@@ -84,15 +84,15 @@ int main(int argc, char** argv)
 	printf(XorStr("add_addr: 0x%I64x\n"), (uint64_t)&add[0] - (uint64_t)GetModuleHandle(NULL));
 	printf(XorStr("Waiting for host process...\n\n"));
 	
-	printf(XorStr("Smooth\t\t - \t Numpad +/-\n"));
-	printf(XorStr("Aimbot\t\t - \t '0'\n"));
-	printf(XorStr("Safe Level\t - \t '9'\n"));
-	printf(XorStr("Item Glow\t - \t '8'\n"));
-	printf(XorStr("Player Glow\t - \t Numpad *\n"));
-	printf(XorStr("Firing Range\t - \t Numpad /\n"));
-	printf(XorStr("Target Allies\t - \t Numpad 7\n"));
-	printf(XorStr("No-recoil\t - \t Numpad 9\n"));
-	printf(XorStr("Max Distance\t - \t Arrows LEFT/RIGHT\n"));
+	printf(XorStr(" Smooth\t\t - \t Numpad +/-\n"));
+	printf(XorStr(" Aimbot\t\t - \t '0'\n"));
+	printf(XorStr(" Safe Level\t - \t '9'\n"));
+	printf(XorStr(" Item Glow\t - \t '8'\n"));
+	printf(XorStr(" Player Glow\t - \t Numpad *\n"));
+	printf(XorStr(" Firing Range\t - \t Numpad /\n"));
+	printf(XorStr(" Target Allies\t - \t Numpad 7\n"));
+	printf(XorStr(" No-recoil\t - \t Numpad 9\n"));
+	printf(XorStr(" Max Distance\t - \t Arrows LEFT/RIGHT\n"));
 
 	while (spectators == 1)
 	{
@@ -111,14 +111,27 @@ int main(int argc, char** argv)
 			toggleNoRecoil_pressed = 1;
 			aim_no_recoil = !aim_no_recoil;
 		}
-		else if (!IsKeyDown(0x38) && toggleNoRecoil_pressed == 1) { toggleNoRecoil_pressed = 0; }
+		else if (!IsKeyDown(VK_NUMPAD9) && toggleNoRecoil_pressed == 1) { toggleNoRecoil_pressed = 0; }
 
-		if (IsKeyDown(VK_MULTIPLY) && togglePlayers_pressed == 0) // NUM-* key
+		if (IsKeyDown(VK_MULTIPLY) && updatePlayerGlow_pressed == 0) // NUM-* key
 		{
-			togglePlayers_pressed = 1;
-			player_glow = !player_glow;
+			updatePlayerGlow_pressed = 1;
+			switch (player_glow)
+			{
+			case 0:
+				player_glow = 1; // 1 = on - not visible through walls
+				break;
+			case 1:
+				player_glow = 2; // 2 = on - visible through walls 
+				break;
+			case 2:
+				player_glow = 0; // 0 = OFF
+				break;
+			default:
+				break;
+			}
 		}
-		else if (!IsKeyDown(0x38) && togglePlayers_pressed == 1) { togglePlayers_pressed = 0; }
+		else if (!IsKeyDown(VK_MULTIPLY) && updatePlayerGlow_pressed == 1) { updatePlayerGlow_pressed = 0; }
 
 		if (IsKeyDown(0x38) && toggleItems_pressed == 0) // 8 key
 		{
@@ -132,14 +145,14 @@ int main(int argc, char** argv)
 			toggleAllyTargets_pressed = 1;
 			ally_targets = !ally_targets;
 		}
-		else if (!IsKeyDown(0x38) && toggleAllyTargets_pressed == 1) { toggleAllyTargets_pressed = 0; }
+		else if (!IsKeyDown(VK_NUMPAD7) && toggleAllyTargets_pressed == 1) { toggleAllyTargets_pressed = 0; }
 
 		if (IsKeyDown(VK_DIVIDE) && toggleFiringRange_pressed == 0) // NUM-/ key
 		{
 			toggleFiringRange_pressed = 1;
 			firing_range = !firing_range;
 		}
-		else if (!IsKeyDown(0x38) && toggleFiringRange_pressed == 1) { toggleFiringRange_pressed = 0; }
+		else if (!IsKeyDown(VK_DIVIDE) && toggleFiringRange_pressed == 1) { toggleFiringRange_pressed = 0; }
 
 		if (IsKeyDown(VK_ADD) && incSmooth_pressed == 0) 
 		{
@@ -163,13 +176,13 @@ int main(int argc, char** argv)
 			switch (aim)
 			{
 			case 0:
-				aim = 1; // on - no visibility check
+				aim = 1; // 1 = on - no visibility check
 				break;
 			case 1:
-				aim = 2; // on - use visibility check
+				aim = 2; // 2 = on - use visibility check
 				break;
 			case 2:
-				aim = 0; // off
+				aim = 0; // 0 = off
 				break;
 			default:
 				break;
@@ -183,13 +196,13 @@ int main(int argc, char** argv)
 			switch (safe_level)
 			{
 			case 0:
-				safe_level = 1; // disable with enemy spectators
+				safe_level = 1; // 1 = disable with enemy spectators
 				break;
 			case 1:
-				safe_level = 2; // disable with enemy OR ally spectators
+				safe_level = 2; // 2 = disable with enemy OR ally spectators
 				break;
 			case 2:
-				safe_level = 0; // keep enabled
+				safe_level = 0; // 0 = keep enabled
 				break;
 			default:
 				break;
