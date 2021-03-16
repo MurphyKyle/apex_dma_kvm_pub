@@ -23,11 +23,11 @@ float max_dist = 200.0f*40.0f;
 int localTeamId = 0;
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
-int max_fov = 5;
+int max_fov = 2;
 int toRead = 100;
-int aim = 0;
+int aim = 2;
+int player_glow = 1;
 bool item_glow = true;
-bool player_glow = true;
 bool firing_range = false;
 bool target_allies = false;
 bool aim_no_recoil = false;
@@ -168,7 +168,7 @@ void DoActions(WinProcess& mem)
 			if(firing_range)
 			{
 				int c=0;
-				for (int i = 0; i < 9000; i++)
+				for (int i = 0; i < 10000; i++)
 				{
 					uint64_t centity = mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5));
 					if (centity == 0) continue;
@@ -180,11 +180,11 @@ void DoActions(WinProcess& mem)
 						continue;
 					}
 
-					if(player_glow && !Target.isGlowing())
+					if((player_glow >= 1) && !Target.isGlowing())
 					{
-						Target.enableGlow(mem);
+						Target.enableGlow(mem, player_glow);
 					}
-					else if(!player_glow && Target.isGlowing())
+					else if((player_glow == 0) && Target.isGlowing())
 					{
 						Target.disableGlow(mem);
 					}
@@ -241,11 +241,11 @@ void DoActions(WinProcess& mem)
 						break;
 					}
 
-					if(player_glow && !Target.isGlowing())
+					if((player_glow >= 1) && !Target.isGlowing())
 					{
-						Target.enableGlow(mem);
+						Target.enableGlow(mem, player_glow);
 					}
-					else if(!player_glow && Target.isGlowing())
+					else if((player_glow == 0) && Target.isGlowing())
 					{
 						Target.disableGlow(mem);
 					}
@@ -334,13 +334,13 @@ static void PrintVarsToConsole() {
 	switch (aim)
 	{
 	case 0:
-		printf("ON - No Vis-check    ");
+		printf("OFF\t\t\t");
 		break;
 	case 1:
-		printf("ON - Vis-check\t");
+		printf("ON - No Vis-check    ");
 		break;
 	case 2:
-		printf("OFF\t\t\t");
+		printf("ON - Vis-check       ");
 		break;
 	default:
 		printf("--\t\t\t");
@@ -368,13 +368,27 @@ static void PrintVarsToConsole() {
 	printf((item_glow ? "  ON\t" : "  OFF\t"));
 
 	// glow players + key
-	printf((player_glow ? " ON\n" : " OFF\n"));
+	switch (player_glow)
+	{
+	case 0:
+		printf("  OFF\t");
+		break;
+	case 1:
+		printf("ON - without walls\t");
+		break;
+	case 2:
+		printf("ON - with walls\t");
+		break;
+	default:
+		printf("  --\t");
+		break;
+	}
 
 	// new string
 	printf("\nFiring Range\tTarget Allies\tNo-recoil    Max Distance\n");
 
 	// firing range + key
-	printf((firing_range ? "   ON\t" : "   OFF\t"));
+	printf((firing_range ? "   ON\t\t" : "   OFF\t\t"));
 
 	// target allies + key
 	printf((target_allies ? "   ON\t" : "   OFF\t"));
@@ -405,7 +419,7 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 	uint64_t max_fov_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*11);
 	uint64_t bone_addr 			= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*12);
 	uint64_t firing_range_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*13);
-	uint64_t target_allies_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*14);
+	uint64_t target_allies_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*14);
 
 	if(mem.Read<int>(spec_addr)!=1)
 	{
@@ -431,7 +445,7 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 			aiming 			= mem.Read<bool>(aiming_addr);
 			max_dist 		= mem.Read<float>(max_dist_addr);
 			item_glow 		= mem.Read<bool>(item_glow_addr);
-			player_glow 	= mem.Read<bool>(player_glow_addr);
+			player_glow 	= mem.Read<int>(player_glow_addr);
 			aim_no_recoil 	= mem.Read<bool>(aim_no_recoil_addr);
 			smooth 			= mem.Read<float>(smooth_addr);
 			max_fov 		= mem.Read<float>(max_fov_addr);
