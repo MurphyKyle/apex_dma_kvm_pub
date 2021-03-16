@@ -39,7 +39,7 @@ float smooth = 50.0f;
 bool incSmooth_pressed = 0;
 bool decSmooth_pressed = 0;
 
-int safe_level = 2; //read
+int safe_level = 0; //read
 bool updateSafeLevel_pressed = 0;
 
 bool item_glow = true;
