@@ -180,9 +180,28 @@ void DoActions(WinProcess& mem)
 						continue;
 					}
 
-					if((player_glow >= 1) && !Target.isGlowing())
+					if(player_glow)
 					{
-						Target.enableGlow(mem, player_glow);
+						if ((int)Target.buffer[GLOW_CONTEXT] != 1 || (int)Target.buffer[GLOW_VISIBLE_TYPE] != 1 || (int)Target.buffer[GLOW_FADE] != 872415232) {
+							float currentEntityTime = 5000.f; // (float)target->buffer[0xEE4];
+							if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
+								GColor color;
+								if (Target.getTeamId() == LPlayer.getTeamId()) {
+									color = { 0.f, 2.f, 3.f };
+								}
+								else if (Target.isKnocked() || !Target.isAlive()) {
+									color = { 2.f, 0.f, 0.f };
+								}
+								else if (Target.lastVisTime() > lastvis_aim[i] || Target.lastVisTime() < 0.f && lastvis_aim[i] > 0.f) {
+									color = { 0.f, 0.f, 0.f };
+								}
+								else {
+									color = { 3.f, 3.f, 3.f };
+								}
+							
+								Target.enableGlow(mem, color);
+							}
+						}
 					}
 					else if((player_glow == 0) && Target.isGlowing())
 					{
@@ -243,7 +262,32 @@ void DoActions(WinProcess& mem)
 
 					if((player_glow >= 1) && !Target.isGlowing())
 					{
-						Target.enableGlow(mem, player_glow);
+						if ((int)Target.buffer[GLOW_CONTEXT] != 1 || (int)Target.buffer[GLOW_VISIBLE_TYPE] != 1 || (int)Target.buffer[GLOW_FADE] != 872415232) 
+						{
+							float currentEntityTime = 5000.f; // (float)target->buffer[0xEE4];
+							if (!isnan(currentEntityTime) && currentEntityTime > 0.f) 
+							{
+								GColor color;
+								if (Target.getTeamId() == LPlayer.getTeamId()) 
+								{
+									color = { 0.f, 2.f, 3.f };
+								}
+								else if (Target.isKnocked() || !Target.isAlive()) 
+								{
+									color = { 2.f, 0.f, 0.f };
+								}
+								else if (Target.lastVisTime() > lastvis_aim[i] || Target.lastVisTime() < 0.f && lastvis_aim[i] > 0.f) 
+								{
+									color = { 0.f, 0.f, 0.f };
+								}
+								else 
+								{
+									color = { 3.f, 3.f, 3.f };
+								}
+
+								Target.enableGlow(mem, color);
+							}
+						}
 					}
 					else if((player_glow == 0) && Target.isGlowing())
 					{

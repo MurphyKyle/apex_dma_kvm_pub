@@ -15,6 +15,22 @@ typedef struct Bone
 	float z;
 }Bone;
 
+struct GColor 
+{
+    float r, g, b;
+};
+
+struct GlowMode 
+{
+    int8_t GeneralGlowMode, BorderGlowMode, BorderSize, TransparentLevel;
+};
+
+struct Fade 
+{
+    int a, b;
+    float c, d, e, f;
+};
+
 class Entity
 {
 public:
@@ -38,7 +54,7 @@ public:
 	QAngle GetRecoil();
 	Vector GetViewAnglesV();
 
-	void enableGlow(WinProcess& mem, int walls);
+	void enableGlow(WinProcess& mem, GColor color);
 	void disableGlow(WinProcess& mem);
 	void SetViewAngles(WinProcess& mem, SVector angles);
 	void SetViewAngles(WinProcess& mem, QAngle& angles);

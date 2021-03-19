@@ -104,12 +104,20 @@ bool Entity::isZooming()
 	return *(int*)(buffer + OFFSET_ZOOMING) == 1;
 }
 
-void Entity::enableGlow(WinProcess& mem, int walls)
+void Entity::enableGlow(WinProcess& mem, GColor color)
 {
-	mem.Write<int>(ptr + OFFSET_GLOW_T1, 16256);
-	mem.Write<int>(ptr + OFFSET_GLOW_T2, 1193322764);
-	mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 7);
-	mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, (walls == 2 ? 2 : 5));
+	mem.Write<GlowMode>(ptr + GLOW_TYPE, { 101,102,96,90 });
+	mem.Write<GColor>(ptr + GLOW_COLOR, color);
+
+	float currentEntityTime = 5000.f;
+	mem.Write<float>(ptr + GLOW_DISTANCE, 40000.f);
+	mem.Write<float>(ptr + GLOW_LIFE_TIME, currentEntityTime);
+
+	currentEntityTime -= 1.f;
+
+	mem.Write<int>(ptr + GLOW_CONTEXT, 1);
+	mem.Write<int>(ptr + GLOW_VISIBLE_TYPE, 1);
+	mem.Write<Fade>(ptr + GLOW_FADE, { 872415232, 872415232, currentEntityTime, currentEntityTime, currentEntityTime, currentEntityTime });
 }
 
 void Entity::disableGlow(WinProcess& mem)
