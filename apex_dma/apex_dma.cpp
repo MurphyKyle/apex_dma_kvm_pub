@@ -183,20 +183,49 @@ void DoActions(WinProcess& mem)
 					if(player_glow)
 					{
 						if ((int)Target.buffer[GLOW_CONTEXT] != 1 || (int)Target.buffer[GLOW_VISIBLE_TYPE] != 1 || (int)Target.buffer[GLOW_FADE] != 872415232) {
-							float currentEntityTime = 5000.f; // (float)target->buffer[0xEE4];
+							float currentEntityTime = 5000.f;
 							if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
 								GColor color;
-								if (Target.getTeamId() == LPlayer.getTeamId()) {
+								if ((Target.getTeamId() == LPlayer.getTeamId()) && !target_allies)
+								{
 									color = { 0.f, 2.f, 3.f };
 								}
-								else if (Target.isKnocked() || !Target.isAlive()) {
-									color = { 2.f, 0.f, 0.f };
-								}
-								else if (Target.lastVisTime() > lastvis_aim[i] || Target.lastVisTime() < 0.f && lastvis_aim[i] > 0.f) {
-									color = { 0.f, 0.f, 0.f };
-								}
-								else {
+								else if (!(firing_range) && (Target.isKnocked() || !Target.isAlive()))
+								{
 									color = { 3.f, 3.f, 3.f };
+								}
+								else if (Target.lastVisTime() > lastvis_aim[i] || (Target.lastVisTime() < 0.f && lastvis_aim[i] > 0.f))
+								{
+									color = { 0.f, 2.f, 0.f };
+								}
+								else
+								{
+									int shield = Target.getShield();
+
+									if (shield > 100)
+									{ //Heirloom armor - Red
+										color = { 3.f, 0.f, 0.f };
+									}
+									else if (shield > 75)
+									{ //Purple armor - Purple
+										color = { 1.84f, 0.46f, 2.07f };
+									}
+									else if (shield > 50)
+									{ //Blue armor - Light blue
+										color = { 0.39f, 1.77f, 2.85f };
+									}
+									else if (shield > 0)
+									{ //White armor - White
+										color = { 2.f, 2.f, 2.f };
+									}
+									else if (Target.getHealth() > 50)
+									{ //Above 50% HP - Orange
+										color = { 3.5f, 1.8f, 0.f };
+									}
+									else
+									{ //Below 50% HP - Light Red
+										color = { 3.28f, 0.78f, 0.63f };
+									}
 								}
 							
 								Target.enableGlow(mem, color);
@@ -264,25 +293,50 @@ void DoActions(WinProcess& mem)
 					{
 						if ((int)Target.buffer[GLOW_CONTEXT] != 1 || (int)Target.buffer[GLOW_VISIBLE_TYPE] != 1 || (int)Target.buffer[GLOW_FADE] != 872415232) 
 						{
-							float currentEntityTime = 5000.f; // (float)target->buffer[0xEE4];
+							float currentEntityTime = 5000.f;
 							if (!isnan(currentEntityTime) && currentEntityTime > 0.f) 
 							{
 								GColor color;
-								if (Target.getTeamId() == LPlayer.getTeamId()) 
+								if ((Target.getTeamId() == LPlayer.getTeamId()) && !target_allies)
 								{
 									color = { 0.f, 2.f, 3.f };
 								}
-								else if (Target.isKnocked() || !Target.isAlive()) 
-								{
-									color = { 2.f, 0.f, 0.f };
-								}
-								else if (Target.lastVisTime() > lastvis_aim[i] || Target.lastVisTime() < 0.f && lastvis_aim[i] > 0.f) 
-								{
-									color = { 0.f, 0.f, 0.f };
-								}
-								else 
+								else if (!(firing_range) && (Target.isKnocked() || !Target.isAlive()))
 								{
 									color = { 3.f, 3.f, 3.f };
+								}
+								else if (Target.lastVisTime() > lastvis_aim[i] || (Target.lastVisTime() < 0.f && lastvis_aim[i] > 0.f))
+								{
+									color = { 0.f, 2.f, 0.f };
+								}
+								else
+								{
+									int shield = Target.getShield();
+
+									if (shield > 100)
+									{ //Heirloom armor - Red
+										color = { 3.f, 0.f, 0.f };
+									}
+									else if (shield > 75)
+									{ //Purple armor - Purple
+										color = { 1.84f, 0.46f, 2.07f };
+									}
+									else if (shield > 50)
+									{ //Blue armor - Light blue
+										color = { 0.39f, 1.77f, 2.85f };
+									}
+									else if (shield > 0)
+									{ //White armor - White
+										color = { 2.f, 2.f, 2.f };
+									}
+									else if (Target.getHealth() > 50)
+									{ //Above 50% HP - Orange
+										color = { 3.5f, 1.8f, 0.f };
+									}
+									else
+									{ //Below 50% HP - Light Red
+										color = { 3.28f, 0.78f, 0.63f };
+									}
 								}
 
 								Target.enableGlow(mem, color);
