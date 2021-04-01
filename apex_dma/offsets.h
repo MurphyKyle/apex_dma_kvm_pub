@@ -5,8 +5,8 @@
 
 #if VERSION == STEAM
 
-    #define OFFSET_ENTITYLIST			0x18da3d8
-    #define OFFSET_LOCAL_ENT			0x1c89a38 //LocalPlayer
+    #define OFFSET_ENTITYLIST			0x18da3f8
+    #define OFFSET_LOCAL_ENT			0x1c89a78 //LocalPlayer
     #define OFFSET_NAME_LIST            0x8133270
 
     #define OFFSET_TEAM					0x450 //m_iTeamNum
@@ -45,8 +45,8 @@
     #define OFFSET_GLOW_ENABLE          0x3c8 //7 = enabled, 2 = disabled
     #define OFFSET_GLOW_THROUGH_WALLS   0x3d0 //2 = enabled, 5 = disabled
 
-    #define GLOW_CONTEXT                OFFSET_GLOW_ENABLE // Script_Highlight_SetCurrentContext
-    #define GLOW_VISIBLE_TYPE           OFFSET_GLOW_THROUGH_WALLS // Script_Highlight_SetVisibilityType 5th mov
+    #define OFFSET_GLOW_ENABLE_GLOW_CONTEXT                 OFFSET_GLOW_ENABLE // Script_Highlight_SetCurrentContext
+    #define OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE     OFFSET_GLOW_THROUGH_WALLS // Script_Highlight_SetVisibilityType 5th mov
     #define GLOW_LIFE_TIME              0x3A4 // Script_Highlight_SetLifeTime + 4
     #define GLOW_DISTANCE               0x3B4 // Script_Highlight_SetFarFadeDist
     #define GLOW_TYPE                   0x2C4 // Script_Highlight_GetState + 4

@@ -23,7 +23,7 @@ float max_dist = 200.0f*40.0f;
 int localTeamId = 0;
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
-int max_fov = 2;
+float max_fov = 1.0f;
 int toRead = 100;
 int aim = 2;
 int player_glow = 1;
@@ -180,9 +180,9 @@ void DoActions(WinProcess& mem)
 						continue;
 					}
 
-					if(player_glow)
+					if(player_glow >= 1 && Target.getPosition().z < 8000.f)
 					{
-						if ((int)Target.buffer[GLOW_CONTEXT] != 1 || (int)Target.buffer[GLOW_VISIBLE_TYPE] != 1 || (int)Target.buffer[GLOW_FADE] != 872415232) {
+						if ((int)Target.buffer[OFFSET_GLOW_ENABLE_GLOW_CONTEXT] != 1 || (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1 || (int)Target.buffer[GLOW_FADE] != 872415232) {
 							float currentEntityTime = 5000.f;
 							if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
 								GColor color;
@@ -289,9 +289,9 @@ void DoActions(WinProcess& mem)
 						break;
 					}
 
-					if((player_glow >= 1) && !Target.isGlowing())
+					if(player_glow >= 1 && Target.getPosition().z < 8000.f)
 					{
-						if ((int)Target.buffer[GLOW_CONTEXT] != 1 || (int)Target.buffer[GLOW_VISIBLE_TYPE] != 1 || (int)Target.buffer[GLOW_FADE] != 872415232) 
+						if ((int)Target.buffer[OFFSET_GLOW_ENABLE_GLOW_CONTEXT] != 1 || (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1 || (int)Target.buffer[GLOW_FADE] != 872415232) 
 						{
 							float currentEntityTime = 5000.f;
 							if (!isnan(currentEntityTime) && currentEntityTime > 0.f) 
@@ -343,7 +343,7 @@ void DoActions(WinProcess& mem)
 							}
 						}
 					}
-					else if((player_glow == 0) && Target.isGlowing())
+					else if (player_glow == 0 && Target.isGlowing())
 					{
 						Target.disableGlow(mem);
 					}
@@ -526,6 +526,8 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 		return;
 	}
 	vars_t = true;
+	auto nextUpdateTime = std::chrono::system_clock::now() + std::chrono::seconds(5);
+
 	while(vars_t)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -550,6 +552,12 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 			bone 			= mem.Read<int>(bone_addr);
 			firing_range	= mem.Read<bool>(firing_range_addr);
 			target_allies	= mem.Read<bool>(target_allies_addr);
+
+			
+			if (nextUpdateTime < std::chrono::system_clock::now()) {
+				PrintVarsToConsole();
+				nextUpdateTime = std::chrono::system_clock::now() + std::chrono::seconds(5);
+			}
 		}
 	}
 	vars_t = false;
@@ -613,7 +621,7 @@ static void init()
 	FILE* out = stdout;
 	const char* cl_proc = "client_ap.exe";
 	const char* ap_proc = "r5apex.exe";
-	bool currentCount = 0;
+	int lostClientCount = 10;
 
 	pid_t pid;
 	#if (LMODE() == MODE_EXTERNAL())
@@ -649,6 +657,7 @@ static void init()
 				aim_t = false;
 				actions_t = false;
 				item_t = false;
+				std::this_thread::sleep_for(std::chrono::seconds(1));
 				printf("Searching apex process...\n");
 				ctx_apex.processList.Refresh();
 				for (auto& i : ctx_apex.processList)
@@ -677,8 +686,10 @@ static void init()
 			if(!client_found)
 			{
 				vars_t = false;
+				std::this_thread::sleep_for(std::chrono::seconds(1));
 				printf("Searching client process...\n");
-				ctx_client.processList.Refresh();	
+				lostClientCount--;
+				ctx_client.processList.Refresh();
 				for (auto& i : ctx_client.processList)
 				{
 					if (!strcasecmp(cl_proc, i.proc.name))
@@ -701,7 +712,7 @@ static void init()
 			if(apex_found || client_found)
 			{
 				apex_found = false;
-				client_found = false;
+				//client_found = false;
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 				ctx_refresh.processList.Refresh();
 				for (auto& i : ctx_refresh.processList)
@@ -745,13 +756,11 @@ static void init()
 						c_Base = 0;
 					}
 				}
+			}
 
-				if (currentCount)
-				{
-					PrintVarsToConsole();
-					currentCount = 0;
-				}
-				currentCount = 1;
+			if (lostClientCount == 0) {
+				printf("Lost the client application!");
+				active = false;
 			}
 		}
 	} catch (VMException& e)

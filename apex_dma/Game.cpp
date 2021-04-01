@@ -96,7 +96,7 @@ Vector Entity::GetViewAnglesV()
 
 bool Entity::isGlowing()
 {
-	return *(int*)(buffer + OFFSET_GLOW_ENABLE) == 7;
+	return *(int*)(buffer + OFFSET_GLOW_ENABLE_GLOW_CONTEXT) == 1;
 }
 
 bool Entity::isZooming()
@@ -110,22 +110,22 @@ void Entity::enableGlow(WinProcess& mem, GColor color)
 	mem.Write<GColor>(ptr + GLOW_COLOR, color);
 
 	float currentEntityTime = 5000.f;
-	mem.Write<float>(ptr + GLOW_DISTANCE, 40000.f);
+	mem.Write<float>(ptr + GLOW_DISTANCE, 20000.f);
 	mem.Write<float>(ptr + GLOW_LIFE_TIME, currentEntityTime);
 
 	currentEntityTime -= 1.f;
 
-	mem.Write<int>(ptr + GLOW_CONTEXT, 1);
-	mem.Write<int>(ptr + GLOW_VISIBLE_TYPE, 1);
+	mem.Write<int>(ptr + OFFSET_GLOW_ENABLE_GLOW_CONTEXT, 1);
+	mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE, 1);
 	mem.Write<Fade>(ptr + GLOW_FADE, { 872415232, 872415232, currentEntityTime, currentEntityTime, currentEntityTime, currentEntityTime });
 }
 
 void Entity::disableGlow(WinProcess& mem)
 {
-	mem.Write<int>(ptr + OFFSET_GLOW_T1, 0);
-	mem.Write<int>(ptr + OFFSET_GLOW_T2, 0);
-	mem.Write<int>(ptr + OFFSET_GLOW_ENABLE, 2);
-	mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 5);
+	//mem.Write<int>(ptr + OFFSET_GLOW_T1, 0);
+	//mem.Write<int>(ptr + OFFSET_GLOW_T2, 0);
+	mem.Write<int>(ptr + OFFSET_GLOW_ENABLE_GLOW_CONTEXT, 0);
+	//mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE, 5);
 }
 
 void Entity::SetViewAngles(WinProcess& mem, SVector angles)
