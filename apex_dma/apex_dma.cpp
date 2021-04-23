@@ -72,6 +72,69 @@ float lastvis_aim[100];
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
+void SetPlayerGlow(WinProcess& mem, Entity& LPlayer, Entity& Target, int index)
+{
+	if (player_glow >= 1)
+	{
+		if(LPlayer.getPosition().z < 8000.f && Target.getPosition().z < 8000.f)
+		{
+			if (!Target.isGlowing() || (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1 || (int)Target.buffer[GLOW_FADE] != 872415232) {
+				float currentEntityTime = 5000.f;
+				if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
+					GColor color;
+					if ((Target.getTeamId() == LPlayer.getTeamId()) && !target_allies)
+					{
+						color = { 0.f, 2.f, 3.f };
+					}
+					else if (!(firing_range) && (Target.isKnocked() || !Target.isAlive()))
+					{
+						color = { 3.f, 3.f, 3.f };
+					}
+					else if (Target.lastVisTime() > lastvis_aim[index] || (Target.lastVisTime() < 0.f && lastvis_aim[index] > 0.f))
+					{
+						color = { 0.f, 1.f, 0.f };
+					}
+					else
+					{
+						int shield = Target.getShield();
+
+						if (shield > 100)
+						{ //Heirloom armor - Red
+							color = { 3.f, 0.f, 0.f };
+						}
+						else if (shield > 75)
+						{ //Purple armor - Purple
+							color = { 1.84f, 0.46f, 2.07f };
+						}
+						else if (shield > 50)
+						{ //Blue armor - Light blue
+							color = { 0.39f, 1.77f, 2.85f };
+						}
+						else if (shield > 0)
+						{ //White armor - White
+							color = { 2.f, 2.f, 2.f };
+						}
+						else if (Target.getHealth() > 50)
+						{ //Above 50% HP - Orange
+							color = { 3.5f, 1.8f, 0.f };
+						}
+						else
+						{ //Below 50% HP - Light Red
+							color = { 3.28f, 0.78f, 0.63f };
+						}
+					}
+				
+					Target.enableGlow(mem, color);
+				}
+			}
+		}
+		else if((player_glow == 0) && Target.isGlowing())
+		{
+			Target.disableGlow(mem);
+		}
+	}
+}
+
 void ProcessPlayer(WinProcess& mem, Entity& LPlayer, Entity& target, uint64_t entitylist, int index)
 {
 	int entity_team = target.getTeamId();
@@ -95,7 +158,14 @@ void ProcessPlayer(WinProcess& mem, Entity& LPlayer, Entity& target, uint64_t en
 	Vector EntityPosition = target.getPosition();
 	Vector LocalPlayerPosition = LPlayer.getPosition();
 	float dist = LocalPlayerPosition.DistTo(EntityPosition);
-	if (dist > max_dist) return;
+	if (dist > max_dist)
+	{
+		if (target.isGlowing())
+		{
+			target.disableGlow(mem);
+		}
+		return;
+	}
 
 	if (!target.isAlive()) return;
 
@@ -131,6 +201,9 @@ void ProcessPlayer(WinProcess& mem, Entity& LPlayer, Entity& target, uint64_t en
 			tmp_aimentity = target.ptr;
 		}
 	}
+
+	SetPlayerGlow(mem, LPlayer, target, index);
+
 	lastvis_aim[index] = target.lastVisTime();
 }
 
@@ -180,63 +253,6 @@ void DoActions(WinProcess& mem)
 						continue;
 					}
 
-					if(player_glow >= 1 && Target.getPosition().z < 8000.f)
-					{
-						if ((int)Target.buffer[OFFSET_GLOW_ENABLE_GLOW_CONTEXT] != 1 || (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1 || (int)Target.buffer[GLOW_FADE] != 872415232) {
-							float currentEntityTime = 5000.f;
-							if (!isnan(currentEntityTime) && currentEntityTime > 0.f) {
-								GColor color;
-								if ((Target.getTeamId() == LPlayer.getTeamId()) && !target_allies)
-								{
-									color = { 0.f, 2.f, 3.f };
-								}
-								else if (!(firing_range) && (Target.isKnocked() || !Target.isAlive()))
-								{
-									color = { 3.f, 3.f, 3.f };
-								}
-								else if (Target.lastVisTime() > lastvis_aim[i] || (Target.lastVisTime() < 0.f && lastvis_aim[i] > 0.f))
-								{
-									color = { 0.f, 2.f, 0.f };
-								}
-								else
-								{
-									int shield = Target.getShield();
-
-									if (shield > 100)
-									{ //Heirloom armor - Red
-										color = { 3.f, 0.f, 0.f };
-									}
-									else if (shield > 75)
-									{ //Purple armor - Purple
-										color = { 1.84f, 0.46f, 2.07f };
-									}
-									else if (shield > 50)
-									{ //Blue armor - Light blue
-										color = { 0.39f, 1.77f, 2.85f };
-									}
-									else if (shield > 0)
-									{ //White armor - White
-										color = { 2.f, 2.f, 2.f };
-									}
-									else if (Target.getHealth() > 50)
-									{ //Above 50% HP - Orange
-										color = { 3.5f, 1.8f, 0.f };
-									}
-									else
-									{ //Below 50% HP - Light Red
-										color = { 3.28f, 0.78f, 0.63f };
-									}
-								}
-							
-								Target.enableGlow(mem, color);
-							}
-						}
-					}
-					else if((player_glow == 0) && Target.isGlowing())
-					{
-						Target.disableGlow(mem);
-					}
-
 					ProcessPlayer(mem, LPlayer, Target, entitylist, c);
 					c++;
 				}
@@ -255,8 +271,6 @@ void DoActions(WinProcess& mem)
 						continue;
 					}
 					
-					ProcessPlayer(mem, LPlayer, Target, entitylist, i);
-
 					int entity_team = Target.getTeamId();
 					if (!target_allies && (entity_team == localTeamId))
 					{
@@ -289,64 +303,7 @@ void DoActions(WinProcess& mem)
 						break;
 					}
 
-					if(player_glow >= 1 && Target.getPosition().z < 8000.f)
-					{
-						if ((int)Target.buffer[OFFSET_GLOW_ENABLE_GLOW_CONTEXT] != 1 || (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1 || (int)Target.buffer[GLOW_FADE] != 872415232) 
-						{
-							float currentEntityTime = 5000.f;
-							if (!isnan(currentEntityTime) && currentEntityTime > 0.f) 
-							{
-								GColor color;
-								if ((Target.getTeamId() == LPlayer.getTeamId()) && !target_allies)
-								{
-									color = { 0.f, 2.f, 3.f };
-								}
-								else if (!(firing_range) && (Target.isKnocked() || !Target.isAlive()))
-								{
-									color = { 3.f, 3.f, 3.f };
-								}
-								else if (Target.lastVisTime() > lastvis_aim[i] || (Target.lastVisTime() < 0.f && lastvis_aim[i] > 0.f))
-								{
-									color = { 0.f, 2.f, 0.f };
-								}
-								else
-								{
-									int shield = Target.getShield();
-
-									if (shield > 100)
-									{ //Heirloom armor - Red
-										color = { 3.f, 0.f, 0.f };
-									}
-									else if (shield > 75)
-									{ //Purple armor - Purple
-										color = { 1.84f, 0.46f, 2.07f };
-									}
-									else if (shield > 50)
-									{ //Blue armor - Light blue
-										color = { 0.39f, 1.77f, 2.85f };
-									}
-									else if (shield > 0)
-									{ //White armor - White
-										color = { 2.f, 2.f, 2.f };
-									}
-									else if (Target.getHealth() > 50)
-									{ //Above 50% HP - Orange
-										color = { 3.5f, 1.8f, 0.f };
-									}
-									else
-									{ //Below 50% HP - Light Red
-										color = { 3.28f, 0.78f, 0.63f };
-									}
-								}
-
-								Target.enableGlow(mem, color);
-							}
-						}
-					}
-					else if (player_glow == 0 && Target.isGlowing())
-					{
-						Target.disableGlow(mem);
-					}
+					ProcessPlayer(mem, LPlayer, Target, entitylist, i);
 				}
 			}
 			spectators = tmp_spec;
