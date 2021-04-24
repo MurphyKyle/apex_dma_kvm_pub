@@ -13,7 +13,7 @@ struct SVector
 		z = z1;
 	}
 
-	SVector(QAngle q)
+	SVector(Vector q)
     {
 		x = q.x;
 		y = q.y;
@@ -23,8 +23,9 @@ struct SVector
 
 namespace Math
 {
-	void NormalizeAngles(QAngle& angle);
-	double GetFov(const QAngle& viewAngle, const QAngle& aimAngle);
+	void NormalizeAngles(Vector& angle);
+	double GetFov(const Vector& viewAngle, const Vector& aimAngle, float distance);
+	double GetFov2(const Vector& viewAngle, const Vector& aimAngle);
 	double DotProduct(const Vector& v1, const float* v2);
-	QAngle CalcAngle(const Vector& src, const Vector& dst);
+	Vector CalcAngle(const Vector& src, const Vector& dst);
 }

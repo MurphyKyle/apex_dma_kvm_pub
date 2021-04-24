@@ -35,7 +35,7 @@ player players[100];
 int aim = 2; //read
 bool updateAim_pressed = 0;
 
-float smooth = 50.0f;
+int smooth = 20;
 bool incSmooth_pressed = 0;
 bool decSmooth_pressed = 0;
 
@@ -157,16 +157,16 @@ int main(int argc, char** argv)
 		if (IsKeyDown(VK_ADD) && incSmooth_pressed == 0) 
 		{
 			incSmooth_pressed = 1;
-			smooth += 5;
-			if (smooth > 100) smooth = 100;
+			smooth += 1;
+			if (smooth > 25) smooth = 25;
 		}
 		else if (!IsKeyDown(VK_ADD) && incSmooth_pressed == 1) { incSmooth_pressed = 0;	}
 		
 		if (IsKeyDown(VK_SUBTRACT) && decSmooth_pressed == 0) 
 		{
 			decSmooth_pressed = 1;
-			smooth -= 5;
-			if (smooth < 15) smooth = 15;
+			smooth -= 1;
+			if (smooth < 1) smooth = 1;
 		}
 		else if (!IsKeyDown(VK_SUBTRACT) && decSmooth_pressed == 1) { decSmooth_pressed = 0; }
 

@@ -48,16 +48,16 @@ public:
 	bool isGlowing();
 	bool isZooming();
 	Vector getAbsVelocity();
-	QAngle GetSwayAngles();
-	QAngle GetViewAngles();
+	Vector GetSwayAngles();
+	Vector GetViewAngles();
 	Vector GetCamPos();
-	QAngle GetRecoil();
+	Vector GetRecoil();
 	Vector GetViewAnglesV();
 
 	void enableGlow(WinProcess& mem, GColor color);
 	void disableGlow(WinProcess& mem);
 	void SetViewAngles(WinProcess& mem, SVector angles);
-	void SetViewAngles(WinProcess& mem, QAngle& angles);
+	void SetViewAngles(WinProcess& mem, Vector& angles);
 	Vector getBonePosition(WinProcess& mem, int id);
 	bool Observing(WinProcess& mem, uint64_t entitylist);
 	void get_name(WinProcess& mem, uint64_t g_Base, uint64_t index, char* name);
@@ -94,4 +94,5 @@ Entity getEntity(WinProcess& mem, uintptr_t ptr);
 Item getItem(WinProcess& mem, uintptr_t ptr);
 bool WorldToScreen(Vector from, float* m_vMatrix, int targetWidth, int targetHeight, Vector& to);
 float CalculateFov(Entity& from, Entity& target);
-QAngle CalculateBestBoneAim(WinProcess& mem, Entity& from, uintptr_t target, float max_fov, int bone, float smooth, bool aim_no_recoil, bool firing_range);
+Vector CalculateBestBoneAim(WinProcess& mem, Entity& from, Entity& target, float max_fov, int bone, int smooth, bool aim_no_recoil);
+, bool firing_range);

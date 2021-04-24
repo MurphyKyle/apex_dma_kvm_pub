@@ -33,7 +33,7 @@ bool target_allies = false;
 bool aim_no_recoil = false;
 int safe_level = 0;
 bool aiming = false;
-float smooth = 50.0f;
+int smooth = 30;
 int bone = 3;
 bool walls = false;
 
@@ -361,7 +361,24 @@ static void AimbotLoop(WinProcess& mem)
 				uint64_t LocalPlayer = mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT);
 				if (LocalPlayer == 0) continue;
 				Entity LPlayer = getEntity(mem, LocalPlayer);
-				QAngle Angles = CalculateBestBoneAim(mem, LPlayer, aimentity, max_fov, bone, smooth, aim_no_recoil, firing_range);
+				Entity target = getEntity(mem, aimentity);
+
+				if (firing_range)
+				{
+					if (!target.isAlive())
+					{
+						continue;
+					}
+				}
+				else
+				{
+					if (!target.isAlive() || target.isKnocked())
+					{
+						continue;
+					}
+				}
+
+				Vector Angles = CalculateBestBoneAim(mem, LPlayer, target, max_fov, bone, smooth, aim_no_recoil);
 				if (Angles.x == 0 && Angles.y == 0)
 				{
 					lock=false;
@@ -383,7 +400,7 @@ static void PrintVarsToConsole() {
 	printf(" %d\t%d\t", spectators, allied_spectators);
 
 	// smooth
-	printf("%d\t", (int)smooth);
+	printf("%d\t", smooth);
 
 	// aim definition
 	switch (aim)
@@ -504,7 +521,7 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 			item_glow 		= mem.Read<bool>(item_glow_addr);
 			player_glow 	= mem.Read<int>(player_glow_addr);
 			aim_no_recoil 	= mem.Read<bool>(aim_no_recoil_addr);
-			smooth 			= mem.Read<float>(smooth_addr);
+			smooth 			= mem.Read<int>(smooth_addr);
 			max_fov 		= mem.Read<float>(max_fov_addr);
 			bone 			= mem.Read<int>(bone_addr);
 			firing_range	= mem.Read<bool>(firing_range_addr);
