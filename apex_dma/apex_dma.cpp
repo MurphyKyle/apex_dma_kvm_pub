@@ -593,7 +593,7 @@ __attribute__((constructor))
 static void init()
 {
 	FILE* out = stdout;
-	const char* cl_proc = "client_ap.exe";
+	const char* cl_proc = "boxsecclient.exe";
 	const char* ap_proc = "r5apex.exe";
 	int lostClientCount = 10;
 

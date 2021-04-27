@@ -26,7 +26,7 @@ int allied_spectators = 1; //write
 bool aiming = false; //read
 uint64_t g_Base = 0; //write
 float max_dist = 200.0f*40.0f; //read
-float max_fov = 5.0f;
+float max_fov = 15.0f;
 int bone = 3;
 
 uint64_t add[15];
@@ -35,7 +35,7 @@ player players[100];
 int aim = 2; //read
 bool updateAim_pressed = 0;
 
-int smooth = 20;
+int smooth = 30;
 bool incSmooth_pressed = 0;
 bool decSmooth_pressed = 0;
 
@@ -48,7 +48,7 @@ bool toggleItems_pressed = 0;
 int player_glow = 1;
 bool updatePlayerGlow_pressed = 0;
 
-bool aim_no_recoil = false;
+bool aim_no_recoil = true;
 bool toggleNoRecoil_pressed = 0;
 
 bool firing_range = false;
@@ -158,7 +158,7 @@ int main(int argc, char** argv)
 		{
 			incSmooth_pressed = 1;
 			smooth += 1;
-			if (smooth > 25) smooth = 25;
+			if (smooth > 45) smooth = 45;
 		}
 		else if (!IsKeyDown(VK_ADD) && incSmooth_pressed == 1) { incSmooth_pressed = 0;	}
 		
