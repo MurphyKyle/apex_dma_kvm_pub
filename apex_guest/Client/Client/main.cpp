@@ -26,7 +26,7 @@ int allied_spectators = 1; //write
 bool aiming = false; //read
 uint64_t g_Base = 0; //write
 float max_dist = 200.0f*40.0f; //read
-float max_fov = 15.0f;
+float max_fov = 10.0f;
 int bone = 3;
 
 uint64_t add[15];
@@ -158,7 +158,7 @@ int main(int argc, char** argv)
 		{
 			incSmooth_pressed = 1;
 			smooth += 1;
-			if (smooth > 45) smooth = 45;
+			if (smooth > 25) smooth = 25;
 		}
 		else if (!IsKeyDown(VK_ADD) && incSmooth_pressed == 1) { incSmooth_pressed = 0;	}
 		
