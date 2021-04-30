@@ -33,7 +33,7 @@ bool target_allies = false;
 bool aim_no_recoil = false;
 int safe_level = 0;
 bool aiming = false;
-int smooth = 30;
+int smooth = 80;
 int bone = 3;
 bool walls = false;
 
@@ -523,7 +523,7 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 			aim_no_recoil 	= mem.Read<bool>(aim_no_recoil_addr);
 			smooth 			= mem.Read<int>(smooth_addr);
 			max_fov 		= mem.Read<float>(max_fov_addr);
-			bone 			= mem.Read<int>(bone_addr);
+			//bone 			= mem.Read<int>(bone_addr);
 			firing_range	= mem.Read<bool>(firing_range_addr);
 			target_allies	= mem.Read<bool>(target_allies_addr);
 
@@ -562,11 +562,29 @@ static void item_glow_t(WinProcess& mem)
 						item.enableGlow(mem);
 					}
 				}
-				k=1;
-				std::this_thread::sleep_for(std::chrono::milliseconds(600));
-			}
-			else
-			{		
+				k = 1;
+				std::this_thread::sleep_for(std::chrono::milliseconds(300));
+				if (bone == 3)
+				{
+			
+					bone = rand() % 10+5;
+               
+					std::this_thread::sleep_for(std::chrono::milliseconds(300));
+					
+					bone = rand() % 10;
+                
+					printf("%d\t", rand()%10);
+				} else
+				{
+				
+					bone = rand() % 10+5;
+              
+					std::this_thread::sleep_for(std::chrono::milliseconds(300));
+					bone = rand() % 10;
+                 
+				}
+			} else
+			{
 				if(k==1)
 				{
 					for (int i = 0; i < 10000; i++)

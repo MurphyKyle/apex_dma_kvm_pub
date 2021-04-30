@@ -35,7 +35,7 @@ player players[100];
 int aim = 2; //read
 bool updateAim_pressed = 0;
 
-int smooth = 30;
+int smooth = 80;
 bool incSmooth_pressed = 0;
 bool decSmooth_pressed = 0;
 
