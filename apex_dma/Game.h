@@ -95,4 +95,3 @@ Item getItem(WinProcess& mem, uintptr_t ptr);
 bool WorldToScreen(Vector from, float* m_vMatrix, int targetWidth, int targetHeight, Vector& to);
 float CalculateFov(Entity& from, Entity& target);
 Vector CalculateBestBoneAim(WinProcess& mem, Entity& from, Entity& target, float max_fov, int bone, int smooth, bool aim_no_recoil);
-//, bool firing_range);
