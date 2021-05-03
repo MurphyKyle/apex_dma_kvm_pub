@@ -523,7 +523,7 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 			aim_no_recoil 	= mem.Read<bool>(aim_no_recoil_addr);
 			smooth 			= mem.Read<int>(smooth_addr);
 			max_fov 		= mem.Read<float>(max_fov_addr);
-			//bone 			= mem.Read<int>(bone_addr);
+			bone 			= mem.Read<int>(bone_addr);
 			firing_range	= mem.Read<bool>(firing_range_addr);
 			target_allies	= mem.Read<bool>(target_allies_addr);
 
@@ -563,11 +563,12 @@ static void item_glow_t(WinProcess& mem)
 					}
 				}
 				k = 1;
-				std::this_thread::sleep_for(std::chrono::milliseconds(300));
+				std::this_thread::sleep_for(std::chrono::milliseconds(600));
+				/*std::this_thread::sleep_for(std::chrono::milliseconds(300));
 				if (bone == 3)
 				{
 			
-					bone = rand() % 10+5;
+					bone = rand() % 10;
                
 					std::this_thread::sleep_for(std::chrono::milliseconds(300));
 					
@@ -582,7 +583,7 @@ static void item_glow_t(WinProcess& mem)
 					std::this_thread::sleep_for(std::chrono::milliseconds(300));
 					bone = rand() % 10;
                  
-				}
+				}*/
 			} else
 			{
 				if(k==1)

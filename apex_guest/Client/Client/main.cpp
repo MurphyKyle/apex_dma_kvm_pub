@@ -1,4 +1,5 @@
 #include "main.h"
+#include <random>
 
 typedef struct player
 {
@@ -18,14 +19,14 @@ typedef struct player
 }player;
 
 int aim_key = VK_RBUTTON;
-int alt_aim_key = 0x37;
+int alt_aim_key = VK_LBUTTON;
 bool active = true;
 bool ready = false;
 int spectators = 1; //write
 int allied_spectators = 1; //write
 bool aiming = false; //read
 uint64_t g_Base = 0; //write
-float max_dist = 200.0f*40.0f; //read
+float max_dist = 200.0f * 40.0f; //read
 float max_fov = 10.0f;
 int bone = 3;
 
@@ -57,6 +58,8 @@ bool toggleFiringRange_pressed = 0;
 bool ally_targets = false;
 bool toggleAllyTargets_pressed = 0;
 
+bool dynamic_aim = 0;
+bool dynamic_aim_pressed = 0;
 
 bool IsKeyDown(int vk)
 {
@@ -83,7 +86,7 @@ int main(int argc, char** argv)
 
 	printf(XorStr("add_addr: 0x%I64x\n"), (uint64_t)&add[0] - (uint64_t)GetModuleHandle(NULL));
 	printf(XorStr("Waiting for host process...\n\n"));
-	
+
 	printf(XorStr(" Smooth\t\t - \t Numpad +/-\n"));
 	printf(XorStr(" Aimbot\t\t - \t '0'\n"));
 	printf(XorStr(" Safe Level\t - \t '9'\n"));
@@ -93,6 +96,7 @@ int main(int argc, char** argv)
 	printf(XorStr(" Target Allies\t - \t Numpad 7\n"));
 	printf(XorStr(" No-recoil\t - \t Numpad 9\n"));
 	printf(XorStr(" Max Distance\t - \t Arrows LEFT/RIGHT\n"));
+	printf(XorStr(" Dynamic Aim\t - \t Numpad 8\n"));
 
 	while (spectators == 1)
 	{
@@ -103,7 +107,7 @@ int main(int argc, char** argv)
 		ready = true;
 		printf(XorStr("Ready\n"));
 	}
-		
+
 	while (active)
 	{
 		if (IsKeyDown(VK_NUMPAD9) && toggleNoRecoil_pressed == 0) // NUM-9 key
@@ -154,15 +158,15 @@ int main(int argc, char** argv)
 		}
 		else if (!IsKeyDown(VK_DIVIDE) && toggleFiringRange_pressed == 1) { toggleFiringRange_pressed = 0; }
 
-		if (IsKeyDown(VK_ADD) && incSmooth_pressed == 0) 
+		if (IsKeyDown(VK_ADD) && incSmooth_pressed == 0)
 		{
 			incSmooth_pressed = 1;
-			smooth += 1;
-			if (smooth > 25) smooth = 25;
+			smooth += 10;
+			if (smooth > 80) smooth = 80;
 		}
-		else if (!IsKeyDown(VK_ADD) && incSmooth_pressed == 1) { incSmooth_pressed = 0;	}
-		
-		if (IsKeyDown(VK_SUBTRACT) && decSmooth_pressed == 0) 
+		else if (!IsKeyDown(VK_ADD) && incSmooth_pressed == 1) { incSmooth_pressed = 0; }
+
+		if (IsKeyDown(VK_SUBTRACT) && decSmooth_pressed == 0)
 		{
 			decSmooth_pressed = 1;
 			smooth -= 1;
@@ -232,6 +236,39 @@ int main(int argc, char** argv)
 		{
 			aiming = false;
 		}
+		//dynamic bone , numpad 8 key
+		if (IsKeyDown(VK_NUMPAD8) && dynamic_aim_pressed == 0)
+		{
+			dynamic_aim_pressed = 1;
+			if (dynamic_aim == 1)
+			{
+				dynamic_aim = 0;
+				printf("dynamic aim 0\t");
+			}
+			else
+			{
+				dynamic_aim = 1;
+				printf("dynamic aim 1\t");
+			}
+
+
+		}
+		else if (!IsKeyDown(VK_NUMPAD8) && dynamic_aim_pressed == 1)
+		{
+			dynamic_aim_pressed = 0;
+			bone = 3;
+		}
+
+		if (dynamic_aim == 1)
+		{
+
+
+			bone = rand() % 10;
+			//printf("%d\t", rand() % 10);
+			std::this_thread::sleep_for(std::chrono::milliseconds(300));
+		}
+
+
 		std::this_thread::sleep_for(std::chrono::milliseconds(2));
 	}
 	ready = false;
