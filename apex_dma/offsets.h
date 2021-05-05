@@ -7,7 +7,7 @@
 
     #define OFFSET_ENTITYLIST			0x18EDA78
     #define OFFSET_LOCAL_ENT			0x1C9D198 //LocalPlayer
-    #define OFFSET_NAME_LIST            0x81342f0
+    #define OFFSET_NAME_LIST            0x81af4c0
 
     #define OFFSET_TEAM					0x448 //m_iTeamNum
     #define OFFSET_HEALTH				0x438 //m_iHealth
@@ -34,7 +34,7 @@
     #define OFFSET_RENDER				0x40BF2E8
 
     #define OFFSET_WEAPON				0x1A6C //m_latestPrimaryWeapons
-    #define OFFSET_BULLET_SPEED         0x1ED0
+    #define OFFSET_BULLET_SPEED         0x1E50
     #define OFFSET_BULLET_SCALE         0x1ED8
     #define OFFSET_ZOOM_FOV             0x16F8 + 0xb8 //m_playerData + m_curZoomFOV
 
@@ -53,7 +53,7 @@
     #define GLOW_COLOR                  0x1D0 // Script_CopyHighlightState 15th mov
     #define GLOW_FADE                   0x388 // Script_Highlight_GetCurrentInsideOpacity 3rd result of 3 offsets consecutive or first + 8    
 
-#elif VERSION == ORIGIN
+#elif VERSION == ORIGIN //this is not updated to season 9
 
     #define OFFSET_ENTITYLIST			0x18db438
     #define OFFSET_LOCAL_ENT			0x1c8aa98 //LocalPlayer
