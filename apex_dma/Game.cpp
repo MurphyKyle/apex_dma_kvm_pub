@@ -236,9 +236,9 @@ Vector CalculateBestBoneAim(WinProcess& mem, Entity& from, Entity& target, float
     	CalculatedAngles = Math::CalcAngle(LocalCamera, TargetBonePosition);
 	Vector ViewAngles = from.GetViewAngles();
 	Vector SwayAngles = from.GetSwayAngles();
-	//remove sway and recoil , currently only support remove recoil compeletely
-	if(aim_no_recoil==2)
-		CalculatedAngles-=SwayAngles-ViewAngles;
+	// remove some sway and recoil
+	if (aim_no_recoil == 2)
+		CalculatedAngles -= ( (SwayAngles - ViewAngles) * 0.7);
 	Math::NormalizeAngles(CalculatedAngles);
 	Vector Delta = CalculatedAngles - ViewAngles;
 	double fov = Math::GetFov2(SwayAngles, CalculatedAngles);
