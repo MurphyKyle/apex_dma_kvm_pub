@@ -118,7 +118,7 @@ int main(int argc, char** argv)
 				aim_no_recoil = 0; //OFF
 				break;
 			case 2:
-				aim_no_recoil = 1; // RCS 
+				aim_no_recoil = 1; // RCS
 				aim = 0;  //RCS and aimbot , only choose one of them for now.
 				break;
 			default:
@@ -136,7 +136,7 @@ int main(int argc, char** argv)
 				player_glow = 1; // 1 = on - not visible through walls
 				break;
 			case 1:
-				player_glow = 2; // 2 = on - visible through walls 
+				player_glow = 2; // 2 = on - visible through walls
 				break;
 			case 2:
 				player_glow = 0; // 0 = OFF
@@ -191,6 +191,8 @@ int main(int argc, char** argv)
 			{
 			case 0:
 				aim = 1; // 1 = on - no visibility check
+				if (aim_no_recoil ==2)
+					aim_no_recoil = 0;
 				break;
 			case 1:
 				aim = 2; // 2 = on - use visibility check
