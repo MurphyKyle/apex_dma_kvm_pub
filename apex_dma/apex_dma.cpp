@@ -8,6 +8,8 @@
 #include <cfloat>
 #include "Game.h"
 #include <thread>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
@@ -19,21 +21,23 @@ uintptr_t aimentity = 0;
 uintptr_t tmp_aimentity = 0;
 uintptr_t lastaimentity = 0;
 float max = 999.0f;
-float max_dist = 200.0f*40.0f;
+float max_dist = 300.0f*40.0f;	// ESP & Glow distance in meters (*40)
 int localTeamId = 0;
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
-float max_fov = 1.0f;
+float max_fov = 10.0f;
 int toRead = 100;
-int aim = 2;
-int player_glow = 1;
+int aim = 2; 					// 0 = off, 1 = on - no visibility check, 2 = on - use visibility check
+int player_glow = 2;			// 0 = off, 1 = on - not visible through walls, 2 = on - visible through walls
+float recoil_control = 0.50f;	// recoil reduction by this value, 1 = 100% = no recoil
+Vector last_sway = Vector();	// used to determine when to reduce recoil
 bool item_glow = true;
 bool firing_range = false;
 bool target_allies = false;
-bool aim_no_recoil = false;
+int aim_no_recoil = 0;			//  0= normal recoil, 1 = use recoil control, 2 = aiming no recoil // when using recoil control , make sure the aimbot is off
 int safe_level = 0;
 bool aiming = false;
-int smooth = 30;
+int smooth = 50;
 int bone = 3;
 bool walls = false;
 
@@ -41,9 +45,15 @@ bool actions_t = false;
 bool aim_t = false;
 bool vars_t = false;
 bool item_t = false;
+bool recoil_t = false;
 uint64_t g_Base;
 uint64_t c_Base;
 bool lock = false;
+
+//recoil control branch related
+const char* printPipe = "/tmp/myfifo";	// output pipe
+const char* pipeClearCmd = "\033[H\033[2J\033[3J";	// escaped 'clear' command
+int shellOut = -1;
 
 typedef struct player
 {
@@ -76,7 +86,7 @@ void SetPlayerGlow(WinProcess& mem, Entity& LPlayer, Entity& Target, int index)
 {
 	if (player_glow >= 1)
 	{
-		if(LPlayer.getPosition().z < 8000.f && Target.getPosition().z < 8000.f)
+		if (LPlayer.getPosition().z < 8000.f && Target.getPosition().z < 8000.f)
 		{
 			if (!Target.isGlowing() || (int)Target.buffer[OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE] != 1 || (int)Target.buffer[GLOW_FADE] != 872415232) {
 				float currentEntityTime = 5000.f;
@@ -123,7 +133,7 @@ void SetPlayerGlow(WinProcess& mem, Entity& LPlayer, Entity& Target, int index)
 							color = { 3.28f, 0.78f, 0.63f };
 						}
 					}
-				
+
 					Target.enableGlow(mem, color);
 				}
 			}
@@ -173,7 +183,7 @@ void ProcessPlayer(WinProcess& mem, Entity& LPlayer, Entity& target, uint64_t en
 	
 	if (!target_allies && (entity_team == localTeamId)) return;
 
-	if(aim==2)
+	if(aim == 2)
 	{
 		if((target.lastVisTime() > lastvis_aim[index]))
 		{
@@ -222,7 +232,7 @@ void DoActions(WinProcess& mem)
 			Entity LPlayer = getEntity(mem, LocalPlayer);
 
 			localTeamId = LPlayer.getTeamId();
-			if (localTeamId < 0 || localTeamId>50)
+			if (localTeamId < 0 || localTeamId > 50)
 			{
 				continue;
 			}
@@ -238,7 +248,7 @@ void DoActions(WinProcess& mem)
 			tmp_spec = 0;
 			tmp_all_spec = 0;
 			tmp_aimentity = 0;
-			if(firing_range)
+			if (firing_range)
 			{
 				int c=0;
 				for (int i = 0; i < 10000; i++)
@@ -270,7 +280,7 @@ void DoActions(WinProcess& mem)
 					{
 						continue;
 					}
-					
+
 					int entity_team = Target.getTeamId();
 					if (!target_allies && (entity_team == localTeamId))
 					{
@@ -308,7 +318,7 @@ void DoActions(WinProcess& mem)
 			}
 			spectators = tmp_spec;
 			allied_spectators = tmp_all_spec;
-			if(!lock)
+			if (!lock)
 				aimentity = tmp_aimentity;
 			else
 				aimentity = lastaimentity;
@@ -466,7 +476,22 @@ static void PrintVarsToConsole() {
 	printf((target_allies ? "   ON\t" : "   OFF\t"));
 
 	// recoil + key
-	printf((aim_no_recoil ? "\t  ON\t" : "\t  OFF\t"));
+	switch (aim_no_recoil)
+	{
+	case 0:
+		printf("\t  OFF\t");
+		break;
+	case 1:
+		printf("\t  RCS\t");
+		break;
+	case 2:
+		printf("\t  ON\t");
+		break;
+	default:
+		printf("  --\t");
+		break;
+	}
+
 
 	// distance
 	printf("\t%d\n\n", (int)max_dist);
@@ -520,7 +545,7 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 			max_dist 		= mem.Read<float>(max_dist_addr);
 			item_glow 		= mem.Read<bool>(item_glow_addr);
 			player_glow 	= mem.Read<int>(player_glow_addr);
-			aim_no_recoil 	= mem.Read<bool>(aim_no_recoil_addr);
+			aim_no_recoil 	= mem.Read<int>(aim_no_recoil_addr);
 			smooth 			= mem.Read<int>(smooth_addr);
 			max_fov 		= mem.Read<float>(max_fov_addr);
 			bone 			= mem.Read<int>(bone_addr);
@@ -540,7 +565,7 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 static void item_glow_t(WinProcess& mem)
 {
 	item_t = true;
-	while(item_t)
+	while (item_t)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		int k = 0;
@@ -581,12 +606,101 @@ static void item_glow_t(WinProcess& mem)
 							item.disableGlow(mem);
 						}
 					}
-					k=0;
+					k = 0;
 				}
-			}	
+			}
 		}
 	}
 	item_t = false;
+}
+
+static void RecoilLoop(WinProcess& mem)
+{
+	recoil_t = true;
+	while (recoil_t)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		while(g_Base!=0 && c_Base!=0)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			if (aim_no_recoil == 1)
+			{
+				uint64_t LocalPlayer = mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT);
+				if (LocalPlayer == 0) continue;
+				int attackState = mem.Read<int>(g_Base + OFFSET_IS_ATTACKING);
+				if (attackState != 5) {
+					if (last_sway.x != 0) {
+						last_sway.x = 0;
+						last_sway.y = 0;
+					}
+					continue; // is not firing
+				}
+
+				Entity LPlayer = getEntity(mem, LocalPlayer);
+				Vector ViewAngles = LPlayer.GetViewAngles();
+				Vector SwayAngles = LPlayer.GetSwayAngles();
+
+				// calculate recoil angles
+				Vector recoilAngles = SwayAngles - ViewAngles;
+				Vector compensatedAngles = ViewAngles;
+				if (recoilAngles.x == 0 || recoilAngles.y == 0 || (recoilAngles.x - last_sway.x) == 0 || (recoilAngles.y - last_sway.y) == 0)
+					continue;
+
+				// reduce recoil angles by last recoil as sway is continous
+				compensatedAngles.x -= ((recoilAngles.x - last_sway.x) * recoil_control);
+				compensatedAngles.y -= ((recoilAngles.y - last_sway.y) * recoil_control);
+				last_sway = recoilAngles;
+
+				LPlayer.SetViewAngles(mem, compensatedAngles);
+			}
+		}
+	}
+	recoil_t = false;
+}
+
+// Requires an open pipe
+static void printToPipe(std::string msg, bool clearShell = false)
+{
+	char buf[80];
+	if (clearShell) {
+		strcpy(buf, pipeClearCmd);
+		write(shellOut, buf, strlen(buf)+1);
+	}
+	strcpy(buf, msg.c_str());
+	write(shellOut, buf, strlen(buf)+1);
+}
+
+static void DebugLoop(WinProcess& mem)
+{
+	while (true)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		while (g_Base != 0)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			uint64_t LocalPlayer = mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT);
+			if (LocalPlayer == 0) continue;
+
+			Entity LPlayer = getEntity(mem, LocalPlayer);
+
+			uint64_t wephandle = mem.Read<uint64_t>(LocalPlayer + OFFSET_WEAPON);
+			wephandle &= 0xffff;
+			uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
+			uint64_t wep_entity = mem.Read<uint64_t>(entitylist + (wephandle << 5));
+			int ammoInClip = mem.Read<int>(wep_entity + OFFSET_AMMO_IN_CLIP);
+
+			int attackState = mem.Read<int>(g_Base + OFFSET_IS_ATTACKING);
+			Vector LocalCamera = LPlayer.GetCamPos();
+			Vector ViewAngles = LPlayer.GetViewAngles();
+			Vector SwayAngles = LPlayer.GetSwayAngles();
+
+			printToPipe("Attack State:\t" + std::to_string(attackState) + "\n", true);
+			printToPipe("Local Camera:\t" + std::to_string(LocalCamera.x) + "." + std::to_string(LocalCamera.y) + "." + std::to_string(LocalCamera.z) + "\n");
+			printToPipe("View Angles: \t" + std::to_string(ViewAngles.x) + "." + std::to_string(ViewAngles.y) + "." + std::to_string(ViewAngles.z) + "\n");
+			printToPipe("Sway Angles: \t" + std::to_string(SwayAngles.x) + "." + std::to_string(SwayAngles.y) + "." + std::to_string(SwayAngles.z) + "\n");
+			printToPipe("Ammo Count:  \t" + std::to_string(ammoInClip)  + "\n");
+		}
+	}
 }
 
 __attribute__((constructor))
@@ -598,14 +712,14 @@ static void init()
 	int lostClientCount = 10;
 
 	pid_t pid;
-	#if (LMODE() == MODE_EXTERNAL())
+#if (LMODE() == MODE_EXTERNAL())
 	FILE* pipe = popen("pidof qemu-system-x86_64", "r");
 	fscanf(pipe, "%d", &pid);
 	pclose(pipe);
-	#else
+#else
 	out = fopen("/tmp/testr.txt", "w");
 	pid = getpid();
-	#endif
+#endif
 	fprintf(out, "Using Mode: %s\n", TOSTRING(LMODE));
 
 	dfile = out;
@@ -637,11 +751,11 @@ static void init()
 				for (auto& i : ctx_apex.processList)
 				{
 					if (!strcasecmp(ap_proc, i.proc.name))
-					{					
+					{
 						PEB peb = i.GetPeb();
 						short magic = i.Read<short>(peb.ImageBaseAddress);
 						g_Base = peb.ImageBaseAddress;
-						if(g_Base!=0)
+						if (g_Base != 0)
 						{
 							apex_found = true;
 							fprintf(out, "\nApex found %lx:\t%s\n", i.proc.pid, i.proc.name);
@@ -649,9 +763,13 @@ static void init()
 							std::thread aimbot(AimbotLoop, std::ref(i));
 							std::thread actions(DoActions, std::ref(i));
 							std::thread itemglow(item_glow_t, std::ref(i));
+							std::thread recoil(RecoilLoop, std::ref(i));
+							//std::thread debug(DebugLoop, std::ref(i));
 							aimbot.detach();
 							actions.detach();
 							itemglow.detach();
+							recoil.detach();
+							//debug.detach();
 						}
 					}
 				}
@@ -742,6 +860,7 @@ static void init()
 		fprintf(out, "Initialization error: %d\n", e.value);
 	}
 	fclose(out);
+	close(shellOut);
 }
 
 int main()
