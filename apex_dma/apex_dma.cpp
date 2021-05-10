@@ -33,6 +33,7 @@ int aim = 2; 					// 0 = off, 1 = on - no visibility check, 2 = on - use visibil
 int player_glow = 2;			// 0 = off, 1 = on - not visible through walls, 2 = on - visible through walls
 float recoil_control = 0.50f;	// recoil reduction by this value, 1 = 100% = no recoil
 Vector last_sway = Vector();	// used to determine when to reduce recoil
+int last_sway_counter = 0;		// to determine if we might be shooting a semi out rifle so we need to hold to last_sway
 bool item_glow = true;
 bool firing_range = false;
 bool target_allies = false;
@@ -624,16 +625,20 @@ static void RecoilLoop(WinProcess& mem)
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		while(g_Base!=0 && c_Base!=0)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(15));
+			std::this_thread::sleep_for(std::chrono::milliseconds(12));
 			if (aim_no_recoil == 1)
 			{
 				uint64_t LocalPlayer = mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT);
 				if (LocalPlayer == 0) continue;
+				last_sway_counter++;
+				if (last_sway_counter > 10000)
+					last_sway_counter = 86;
 				int attackState = mem.Read<int>(g_Base + OFFSET_IS_ATTACKING);
 				if (attackState != 5) {
-					if (last_sway.x != 0) {
+					if (last_sway.x != 0 && last_sway_counter > 85) {	// ~ about 1 second between shot is considered semi-auto so we keep last_sway
 						last_sway.x = 0;
 						last_sway.y = 0;
+						last_sway_counter = 0;
 					}
 					continue; // is not firing
 				}
@@ -652,6 +657,7 @@ static void RecoilLoop(WinProcess& mem)
 				ViewAngles.y -= ((recoilAngles.y - last_sway.y) * recoil_control);
 				LPlayer.SetViewAngles(mem, ViewAngles);
 				last_sway = recoilAngles;
+				last_sway_counter = 0;
 
 
 			}
