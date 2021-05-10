@@ -16,6 +16,8 @@
 
 FILE* dfile;
 
+bool DEBUG_PRINT = false;
+
 bool active = true;
 uintptr_t aimentity = 0;
 uintptr_t tmp_aimentity = 0;
@@ -738,6 +740,13 @@ static void init()
 		//Client "add" offset
 		uint64_t add_off = 0xABCDE;
 		
+		// start external terminal and open pipe to print to it
+		if (DEBUG_PRINT) {
+			system("gnome-terminal -- cat /tmp/myfifo");
+			mkfifo(printPipe, 0666);
+			shellOut = open(printPipe, O_WRONLY);
+		}
+
 		while(active)
 		{
 			if(!apex_found)
@@ -764,12 +773,17 @@ static void init()
 							std::thread actions(DoActions, std::ref(i));
 							std::thread itemglow(item_glow_t, std::ref(i));
 							std::thread recoil(RecoilLoop, std::ref(i));
-							//std::thread debug(DebugLoop, std::ref(i));
+
+							if (DEBUG_PRINT) {
+								std::thread debug(DebugLoop, std::ref(i));
+								debug.detach();
+							}
+
 							aimbot.detach();
 							actions.detach();
 							itemglow.detach();
 							recoil.detach();
-							//debug.detach();
+
 						}
 					}
 				}
