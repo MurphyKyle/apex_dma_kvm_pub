@@ -624,7 +624,7 @@ static void RecoilLoop(WinProcess& mem)
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		while(g_Base!=0 && c_Base!=0)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			std::this_thread::sleep_for(std::chrono::milliseconds(15));
 			if (aim_no_recoil == 1)
 			{
 				uint64_t LocalPlayer = mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT);
@@ -644,16 +644,16 @@ static void RecoilLoop(WinProcess& mem)
 
 				// calculate recoil angles
 				Vector recoilAngles = SwayAngles - ViewAngles;
-				Vector compensatedAngles = ViewAngles;
 				if (recoilAngles.x == 0 || recoilAngles.y == 0 || (recoilAngles.x - last_sway.x) == 0 || (recoilAngles.y - last_sway.y) == 0)
 					continue;
 
 				// reduce recoil angles by last recoil as sway is continous
-				compensatedAngles.x -= ((recoilAngles.x - last_sway.x) * recoil_control);
-				compensatedAngles.y -= ((recoilAngles.y - last_sway.y) * recoil_control);
+				ViewAngles.x -= ((recoilAngles.x - last_sway.x) * recoil_control);
+				ViewAngles.y -= ((recoilAngles.y - last_sway.y) * recoil_control);
+				LPlayer.SetViewAngles(mem, ViewAngles);
 				last_sway = recoilAngles;
 
-				LPlayer.SetViewAngles(mem, compensatedAngles);
+
 			}
 		}
 	}
@@ -674,7 +674,7 @@ static void printToPipe(std::string msg, bool clearShell = false)
 
 static void DebugLoop(WinProcess& mem)
 {
-	while (true)
+	while (DEBUG_PRINT)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		while (g_Base != 0)
@@ -685,16 +685,16 @@ static void DebugLoop(WinProcess& mem)
 
 			Entity LPlayer = getEntity(mem, LocalPlayer);
 
+			int attackState = mem.Read<int>(g_Base + OFFSET_IS_ATTACKING);
+			Vector LocalCamera = LPlayer.GetCamPos();
+			Vector ViewAngles = LPlayer.GetViewAngles();
+			Vector SwayAngles = LPlayer.GetSwayAngles();
+
 			uint64_t wephandle = mem.Read<uint64_t>(LocalPlayer + OFFSET_WEAPON);
 			wephandle &= 0xffff;
 			uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
 			uint64_t wep_entity = mem.Read<uint64_t>(entitylist + (wephandle << 5));
 			int ammoInClip = mem.Read<int>(wep_entity + OFFSET_AMMO_IN_CLIP);
-
-			int attackState = mem.Read<int>(g_Base + OFFSET_IS_ATTACKING);
-			Vector LocalCamera = LPlayer.GetCamPos();
-			Vector ViewAngles = LPlayer.GetViewAngles();
-			Vector SwayAngles = LPlayer.GetSwayAngles();
 
 			printToPipe("Attack State:\t" + std::to_string(attackState) + "\n", true);
 			printToPipe("Local Camera:\t" + std::to_string(LocalCamera.x) + "." + std::to_string(LocalCamera.y) + "." + std::to_string(LocalCamera.z) + "\n");
