@@ -25,8 +25,8 @@ int spectators = 1; //write
 int allied_spectators = 1; //write
 bool aiming = false; //read
 uint64_t g_Base = 0; //write
-float max_dist = 200.0f*40.0f; //read
-float max_fov = 5.0f;
+float max_dist = 300.0f * 40.0f; //read
+float max_fov = 10.0f;
 int bone = 3;
 
 uint64_t add[15];
@@ -48,7 +48,7 @@ bool toggleItems_pressed = 0;
 int player_glow = 1;
 bool updatePlayerGlow_pressed = 0;
 
-bool aim_no_recoil = false;
+int aim_no_recoil = 0; //  0= normal recoil, 1 = use recoil control, 2 = aimbot no recoil // when using recoil control , make sure the aimbot is off
 bool toggleNoRecoil_pressed = 0;
 
 bool firing_range = false;
@@ -109,7 +109,21 @@ int main(int argc, char** argv)
 		if (IsKeyDown(VK_NUMPAD9) && toggleNoRecoil_pressed == 0) // NUM-9 key
 		{
 			toggleNoRecoil_pressed = 1;
-			aim_no_recoil = !aim_no_recoil;
+			switch (aim_no_recoil)
+			{
+			case 0:
+				aim_no_recoil = 2; // aimbot no recoil
+				break;
+			case 1:
+				aim_no_recoil = 0; //OFF
+				break;
+			case 2:
+				aim_no_recoil = 1; // RCS 
+				aim = 0;  //RCS and aimbot , only choose one of them for now.
+				break;
+			default:
+				break;
+			}
 		}
 		else if (!IsKeyDown(VK_NUMPAD9) && toggleNoRecoil_pressed == 1) { toggleNoRecoil_pressed = 0; }
 
