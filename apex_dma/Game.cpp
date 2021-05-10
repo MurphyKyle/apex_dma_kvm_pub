@@ -188,7 +188,7 @@ float CalculateFov(Entity& from, Entity& target)
 	return Math::GetFov2(ViewAngles, Angle);
 }
 
-Vector CalculateBestBoneAim(WinProcess& mem, Entity& from, Entity& target, float max_fov, int bone, int smooth, bool aim_no_recoil)
+Vector CalculateBestBoneAim(WinProcess& mem, Entity& from, Entity& target, float max_fov, int bone, int smooth, int aim_no_recoil)
 {
 	Vector LocalCamera = from.GetCamPos();
 	Vector TargetBonePosition = target.getBonePosition(mem, bone);
@@ -236,8 +236,8 @@ Vector CalculateBestBoneAim(WinProcess& mem, Entity& from, Entity& target, float
     	CalculatedAngles = Math::CalcAngle(LocalCamera, TargetBonePosition);
 	Vector ViewAngles = from.GetViewAngles();
 	Vector SwayAngles = from.GetSwayAngles();
-	//remove sway and recoil
-	if(aim_no_recoil)
+	//remove sway and recoil , currently only support remove recoil compeletely
+	if(aim_no_recoil==2)
 		CalculatedAngles-=SwayAngles-ViewAngles;
 	Math::NormalizeAngles(CalculatedAngles);
 	Vector Delta = CalculatedAngles - ViewAngles;
