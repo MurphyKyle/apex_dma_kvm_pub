@@ -1,35 +1,58 @@
 #include <linux/types.h>
+#include <linux/version.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
 #include <linux/printk.h>
 #include <linux/uaccess.h>
-#include <linux/kallsyms.h>
+#include <linux/kprobes.h>
 #include "kmem.h"
 
 MODULE_DESCRIPTION("vmread in-kernel helper used to accelerate memory operations");
 MODULE_AUTHOR("Heep");
 MODULE_LICENSE("GPL");
 
+void *lookup_name(const char *name) {
+	int res;
+	void *ret;
+	struct kprobe kp = {0};
+	kp.symbol_name = name;
+
+	res = register_kprobe(&kp);
+	if (res < 0) {
+		printk("vmread: [kprobe] lookup for '%s' failed: %d\n", name, res);
+		return 0;
+	}
+	ret = kp.addr;
+	unregister_kprobe(&kp);
+	return ret;
+}
+
 static int vmreadinit(void);
 static void vmreadexit(void);
 static void vmmap(ProcessData* data);
-static long unlocked_ioctl(struct file* filp, unsigned int cmd, unsigned long argp);
+static long vmread_ioctl(struct file* filp, unsigned int cmd, unsigned long argp);
 
 module_init(vmreadinit);
 module_exit(vmreadexit);
 
 #define KSYMDEC(x) static typeof(&x) _##x = NULL
 #define KSYM(x) _##x
-#define KSYMDEF(x) _##x = (typeof(&x))kallsyms_lookup_name(#x)
+#define KSYMDEF(x) _##x = (typeof(&x))lookup_name(#x)
 
 KSYMDEC(insert_vm_struct);
 KSYMDEC(vm_area_alloc);
 KSYMDEC(vm_area_free);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,6,0)
 static const struct file_operations fops = {
 	.owner = THIS_MODULE,
-	.unlocked_ioctl = unlocked_ioctl
+	.unlocked_ioctl = vmread_ioctl
 };
+#else
+static const struct proc_ops fops = {
+	.proc_ioctl = vmread_ioctl
+};
+#endif
 
 static int vmreadinit(void)
 {
@@ -48,7 +71,7 @@ static void vmreadexit(void)
 	printk("vmread: uninitialized\n");
 }
 
-static long unlocked_ioctl(struct file* filp, unsigned int cmd, unsigned long argp)
+static long vmread_ioctl(struct file* filp, unsigned int cmd, unsigned long argp)
 {
 	void* __user userArgs;
 	ProcessData kernelArgs;
