@@ -211,7 +211,7 @@ class WinProcess
 	{
 		VMemWrite(&ctx->process, proc.dirBase, (uint64_t)value, address, len);
 	}
-
+	
 	WinProc proc;
 	const WinCtx* ctx;
 	ModuleIteratableList modules;
@@ -226,6 +226,7 @@ class WinProcessList
 	using iterator = WinListIterator<WinProcessList>;
 	void Refresh();
 	WinProcess* FindProc(const char* name);
+	WinProcess* FindProcNoCase(const char* name);
 	iterator begin();
 	iterator end();
 	WinProcessList();

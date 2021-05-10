@@ -551,6 +551,17 @@ static uint16_t GetNTVersion(const WinCtx* ctx)
 
 static uint32_t GetNTBuild(const WinCtx* ctx)
 {
+    uint64_t ntBuild = FindProcAddress(ctx->ntExports, "NtBuildNumber");
+
+    if (ntBuild) {
+        uint32_t build = 0;
+
+        VMemRead(&ctx->process, ctx->initialProcess.dirBase, (uint64_t)&build, ntBuild, sizeof(build));
+
+        if (build)
+            return build & 0xffffff;
+    }
+
 	uint64_t getVersion = FindProcAddress(ctx->ntExports, "RtlGetVersion");
 
 	if (!getVersion)
@@ -648,6 +659,15 @@ static int SetupOffsets(WinCtx* ctx)
 		  if (ctx->ntBuild >= 18362) { /* Version 1903 or higher */
 			  ctx->offsets.apl = 0x2f0;
 			  ctx->offsets.threadListEntry = 0x6b8;
+		  }
+
+		  if (ctx->ntBuild >= 19041) { /* Version 2004 or higher */
+			  ctx->offsets.apl = 0x448;
+			  ctx->offsets.stackCount = 0x348;
+			  ctx->offsets.imageFileName = 0x5a8;
+			  ctx->offsets.peb = 0x550;
+			  ctx->offsets.threadListHead = 0x5e0;
+			  ctx->offsets.threadListEntry = 0x4e8;
 		  }
 
 		  break;
