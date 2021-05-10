@@ -191,7 +191,7 @@ int main(int argc, char** argv)
 			{
 			case 0:
 				aim = 1; // 1 = on - no visibility check
-				if (aim_no_recoil ==2)
+				if (aim_no_recoil ==1)
 					aim_no_recoil = 0;
 				break;
 			case 1:
