@@ -11,10 +11,8 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#define STRINGIFY(x) #x
-#define TOSTRING(x) STRINGIFY(x)
-
-FILE* dfile;
+Memory apex_mem;
+Memory client_mem;
 
 bool DEBUG_PRINT = false;
 
@@ -28,7 +26,7 @@ int localTeamId = 0;
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
 float max_fov = 10.0f;
-int toRead = 100;
+const int toRead = 100;
 int aim = 2; 					// 0 = off, 1 = on - no visibility check, 2 = on - use visibility check
 int player_glow = 2;			// 0 = off, 1 = on - not visible through walls, 2 = on - visible through walls
 float recoil_control = 0.50f;	// recoil reduction by this value, 1 = 100% = no recoil
@@ -42,7 +40,8 @@ int safe_level = 0;
 bool aiming = false;
 int smooth = 50;
 int bone = 3;
-bool walls = false;
+bool walls = true;
+bool thirdPerson = false;
 
 bool actions_t = false;
 bool aim_t = false;
@@ -58,34 +57,11 @@ const char* printPipe = "/tmp/myfifo";	// output pipe
 const char* pipeClearCmd = "\033[H\033[2J\033[3J";	// escaped 'clear' command
 int shellOut = -1;
 
-typedef struct player
-{
-	float dist = 0;
-	int entity_team = 0;
-	float boxMiddle = 0;
-	float h_y = 0;
-	float width = 0;
-	float height = 0;
-	float b_x = 0;
-	float b_y = 0;
-	bool knocked = false;
-	bool visible = false;
-	int health = 0;
-	int shield = 0;
-	char name[33] = { 0 };
-}player;
-
-
-struct Matrix
-{
-	float matrix[16];
-};
-
-float lastvis_aim[100];
+float lastvis_aim[toRead];
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SetPlayerGlow(WinProcess& mem, Entity& LPlayer, Entity& Target, int index)
+void SetPlayerGlow(Entity& LPlayer, Entity& Target, int index)
 {
 	if (player_glow >= 1)
 	{
@@ -137,21 +113,22 @@ void SetPlayerGlow(WinProcess& mem, Entity& LPlayer, Entity& Target, int index)
 						}
 					}
 
-					Target.enableGlow(mem, color);
+					Target.enableGlow(color);
 				}
 			}
 		}
 		else if((player_glow == 0) && Target.isGlowing())
 		{
-			Target.disableGlow(mem);
+			Target.disableGlow();
 		}
 	}
 }
 
-void ProcessPlayer(WinProcess& mem, Entity& LPlayer, Entity& target, uint64_t entitylist, int index)
+
+void ProcessPlayer(Entity& LPlayer, Entity& target, uint64_t entitylist, int index)
 {
 	int entity_team = target.getTeamId();
-	bool obs = target.Observing(mem, entitylist);
+	bool obs = target.Observing(entitylist);
 	if (obs)
 	{
 		/*if(obs == LPlayer.ptr)
@@ -175,7 +152,7 @@ void ProcessPlayer(WinProcess& mem, Entity& LPlayer, Entity& target, uint64_t en
 	{
 		if (target.isGlowing())
 		{
-			target.disableGlow(mem);
+			target.disableGlow();
 		}
 		return;
 	}
@@ -215,24 +192,37 @@ void ProcessPlayer(WinProcess& mem, Entity& LPlayer, Entity& target, uint64_t en
 		}
 	}
 
-	SetPlayerGlow(mem, LPlayer, target, index);
+	SetPlayerGlow(LPlayer, target, index);
 
 	lastvis_aim[index] = target.lastVisTime();
 }
 
-void DoActions(WinProcess& mem)
+void DoActions()
 {
 	actions_t = true;
 	while (actions_t)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		bool tmp_thirdPerson = false;
 		while (g_Base!=0 && c_Base!=0)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(30));
-			uint64_t LocalPlayer = mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT);
+			std::this_thread::sleep_for(std::chrono::milliseconds(30));	
+			if (thirdPerson && !tmp_thirdPerson)
+			{
+				apex_mem.Write<int>(g_Base + OFFSET_THIRDPERSON, 1);
+				tmp_thirdPerson = true;
+			}
+			else if (!thirdPerson && tmp_thirdPerson)
+			{
+				apex_mem.Write<int>(g_Base + OFFSET_THIRDPERSON, -1);
+				tmp_thirdPerson = false;
+			}
+
+			uint64_t LocalPlayer = 0;
+			apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
 			if (LocalPlayer == 0) continue;
 
-			Entity LPlayer = getEntity(mem, LocalPlayer);
+			Entity LPlayer = getEntity(LocalPlayer);
 
 			localTeamId = LPlayer.getTeamId();
 			if (localTeamId < 0 || localTeamId > 50)
@@ -241,7 +231,8 @@ void DoActions(WinProcess& mem)
 			}
 			uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
 
-			uint64_t baseent = mem.Read<uint64_t>(entitylist);
+			uint64_t baseent = 0;
+			apex_mem.Read<uint64_t>(entitylist, baseent);
 			if (baseent == 0)
 			{
 				continue;
@@ -256,17 +247,18 @@ void DoActions(WinProcess& mem)
 				int c=0;
 				for (int i = 0; i < 10000; i++)
 				{
-					uint64_t centity = mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5));
+					uint64_t centity = 0;
+					apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
 					if (centity == 0) continue;
 					if (LocalPlayer == centity) continue;
 
-					Entity Target = getEntity(mem, centity);
+					Entity Target = getEntity(centity);
 					if (!Target.isDummy() && !target_allies)
 					{
 						continue;
 					}
 
-					ProcessPlayer(mem, LPlayer, Target, entitylist, c);
+					ProcessPlayer(LPlayer, Target, entitylist, c);
 					c++;
 				}
 			}
@@ -274,11 +266,12 @@ void DoActions(WinProcess& mem)
 			{
 				for (int i = 0; i < toRead; i++)
 				{
-					uint64_t centity = mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5));
+					uint64_t centity = 0;
+					apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
 					if (centity == 0) continue;
 					if (LocalPlayer == centity) continue;
 
-					Entity Target = getEntity(mem, centity);
+					Entity Target = getEntity(centity);
 					if (!Target.isPlayer())
 					{
 						continue;
@@ -297,17 +290,17 @@ void DoActions(WinProcess& mem)
 						{
 							if(Target.isGlowing())
 							{
-								Target.disableGlow(mem);
+								Target.disableGlow();
 							}
 							continue;
 						}
 						break;
 					case 2:
-						if (spectators+allied_spectators > 0)
+						if (spectators + allied_spectators > 0)
 						{
 							if(Target.isGlowing())
 							{
-								Target.disableGlow(mem);
+								Target.disableGlow();
 							}
 							continue;
 						}
@@ -316,7 +309,7 @@ void DoActions(WinProcess& mem)
 						break;
 					}
 
-					ProcessPlayer(mem, LPlayer, Target, entitylist, i);
+					ProcessPlayer(LPlayer, Target, entitylist, i);
 				}
 			}
 			spectators = tmp_spec;
@@ -332,9 +325,7 @@ void DoActions(WinProcess& mem)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-player players[100];
-
-static void AimbotLoop(WinProcess& mem)
+static void AimbotLoop()
 {
 	aim_t = true;
 	while (aim_t)
@@ -371,10 +362,11 @@ static void AimbotLoop(WinProcess& mem)
 				}
 				lock=true;
 				lastaimentity = aimentity;
-				uint64_t LocalPlayer = mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT);
+				uint64_t LocalPlayer = 0;
+				apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
 				if (LocalPlayer == 0) continue;
-				Entity LPlayer = getEntity(mem, LocalPlayer);
-				Entity target = getEntity(mem, aimentity);
+				Entity LPlayer = getEntity(LocalPlayer);
+				Entity target = getEntity(aimentity);
 
 				if (firing_range)
 				{
@@ -391,14 +383,14 @@ static void AimbotLoop(WinProcess& mem)
 					}
 				}
 
-				Vector Angles = CalculateBestBoneAim(mem, LPlayer, target, max_fov, bone, smooth, aim_no_recoil);
+				Vector Angles = CalculateBestBoneAim(LPlayer, target, max_fov, bone, smooth, aim_no_recoil);
 				if (Angles.x == 0 && Angles.y == 0)
 				{
 					lock=false;
 					lastaimentity=0;
 					continue;
 				}
-				LPlayer.SetViewAngles(mem, Angles);
+				LPlayer.SetViewAngles(Angles);
 			}
 		}
 	}
@@ -500,30 +492,33 @@ static void PrintVarsToConsole() {
 	printf("\t%d\n\n", (int)max_dist);
 }
 
-static void set_vars(WinProcess& mem, uint64_t add_addr)
+static void set_vars(uint64_t add_addr)
 {
 	printf("Reading client vars...\n");
 	std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	//Get addresses of client vars
-	uint64_t spec_addr 			= mem.Read<uint64_t>(add_addr);
-	uint64_t all_spec_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t));
-	uint64_t aim_addr 			= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*2);
-	uint64_t safe_lev_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*3);
-	uint64_t aiming_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*4);
-	uint64_t g_Base_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*5);
-	uint64_t max_dist_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*6);
-	uint64_t item_glow_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*7);
-	uint64_t player_glow_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*8);
-	uint64_t aim_no_recoil_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*9);
-	uint64_t smooth_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*10);
-	uint64_t max_fov_addr 		= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*11);
-	uint64_t bone_addr 			= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*12);
-	uint64_t firing_range_addr 	= mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*13);
-	uint64_t target_allies_addr = mem.Read<uint64_t>(add_addr + sizeof(uint64_t)*14);
+	uint64_t spec_addr 			= client_mem.Read<uint64_t>(add_addr, spec_addr);
+	uint64_t all_spec_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t), all_spec_addr);
+	uint64_t aim_addr 			= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 2, aim_addr);
+	uint64_t safe_lev_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 3, safe_lev_addr);
+	uint64_t aiming_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 4, aiming_addr);
+	uint64_t g_Base_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 5, g_Base_addr);
+	uint64_t max_dist_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 6, max_dist_addr);
+	uint64_t item_glow_addr 	= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 7, item_glow_addr);
+	uint64_t player_glow_addr 	= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 8, player_glow_addr);
+	uint64_t aim_no_recoil_addr = client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 9, aim_no_recoil_addr);
+	uint64_t smooth_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 10, smooth_addr);
+	uint64_t max_fov_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 11, max_fov_addr);
+	uint64_t bone_addr 			= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 12, bone_addr);
+	uint64_t firing_range_addr 	= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 13, firing_range_addr);
+	uint64_t target_allies_addr = client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 14, target_allies_addr);
+	uint64_t thirdPerson_addr 	= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 15, thirdPerson_addr);
 
-	if(mem.Read<int>(spec_addr)!=1)
+	int tmp = client_mem.Read<int>(spec_addr, tmp);
+	
+	if(tmp != 1)
 	{
-		printf("Incorrect values read. Restart the client or check if the offset is correct. Quitting.\n");
+		printf("Incorrect values read. Check if the add_off is correct. Quitting.\n");
 		active = false;
 		return;
 	}
@@ -535,27 +530,28 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		if(c_Base!=0 && g_Base!=0)
 			printf("\nReady\n");
+
 		while(c_Base!=0 && g_Base!=0)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));	
-			mem.Write<int>(spec_addr, spectators);
-			mem.Write<int>(all_spec_addr, allied_spectators);
-			mem.Write<uint64_t>(g_Base_addr, g_Base);
+			client_mem.Write<int>(all_spec_addr, allied_spectators);
+			client_mem.Write<int>(spec_addr, spectators);
+			client_mem.Write<uint64_t>(g_Base_addr, g_Base);
 
-			aim 			= mem.Read<int>(aim_addr);
-			safe_level 		= mem.Read<int>(safe_lev_addr);
-			aiming 			= mem.Read<bool>(aiming_addr);
-			max_dist 		= mem.Read<float>(max_dist_addr);
-			item_glow 		= mem.Read<bool>(item_glow_addr);
-			player_glow 	= mem.Read<int>(player_glow_addr);
-			aim_no_recoil 	= mem.Read<int>(aim_no_recoil_addr);
-			smooth 			= mem.Read<int>(smooth_addr);
-			max_fov 		= mem.Read<float>(max_fov_addr);
-			bone 			= mem.Read<int>(bone_addr);
-			firing_range	= mem.Read<bool>(firing_range_addr);
-			target_allies	= mem.Read<bool>(target_allies_addr);
-
-			
+			client_mem.Read<int>(aim_addr, aim);
+			client_mem.Read<int>(safe_lev_addr, safe_level);
+			client_mem.Read<bool>(aiming_addr, aiming);
+			client_mem.Read<float>(max_dist_addr, max_dist);
+			client_mem.Read<bool>(item_glow_addr, item_glow);
+			client_mem.Read<int>(player_glow_addr, player_glow);
+			client_mem.Read<int>(aim_no_recoil_addr, aim_no_recoil);
+			client_mem.Read<int>(smooth_addr, smooth);
+			client_mem.Read<float>(max_fov_addr, max_fov);
+			client_mem.Read<int>(bone_addr, bone);
+			client_mem.Read<bool>(firing_range_addr, firing_range);
+			client_mem.Read<bool>(target_allies_addr, target_allies);
+			client_mem.Read<bool>(thirdPerson_addr, thirdPerson);
+						
 			if (nextUpdateTime < std::chrono::system_clock::now()) {
 				PrintVarsToConsole();
 				nextUpdateTime = std::chrono::system_clock::now() + std::chrono::seconds(5);
@@ -565,7 +561,7 @@ static void set_vars(WinProcess& mem, uint64_t add_addr)
 	vars_t = false;
 }
 
-static void item_glow_t(WinProcess& mem)
+static void item_glow_t()
 {
 	item_t = true;
 	while (item_t)
@@ -580,14 +576,14 @@ static void item_glow_t(WinProcess& mem)
 			{
 				for (int i = 0; i < 10000; i++)
 				{
-					uint64_t centity = mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5));
+					uint64_t centity = 0;
+					apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
 					if (centity == 0) continue;
-
-					Item item = getItem(mem, centity);
+					Item item = getItem(centity);
 
 					if(item.isItem() && !item.isGlowing())
 					{
-						item.enableGlow(mem);
+						item.enableGlow();
 					}
 				}
 				k=1;
@@ -599,14 +595,15 @@ static void item_glow_t(WinProcess& mem)
 				{
 					for (int i = 0; i < 10000; i++)
 					{
-						uint64_t centity = mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5));
+						uint64_t centity = 0;
+						apex_mem.Read<uint64_t>(entitylist + ((uint64_t)i << 5), centity);
 						if (centity == 0) continue;
 
-						Item item = getItem(mem, centity);
+						Item item = getItem(centity);
 
 						if(item.isItem() && item.isGlowing())
 						{
-							item.disableGlow(mem);
+							item.disableGlow();
 						}
 					}
 					k = 0;
@@ -617,7 +614,7 @@ static void item_glow_t(WinProcess& mem)
 	item_t = false;
 }
 
-static void RecoilLoop(WinProcess& mem)
+static void RecoilLoop()
 {
 	recoil_t = true;
 	while (recoil_t)
@@ -628,12 +625,12 @@ static void RecoilLoop(WinProcess& mem)
 			std::this_thread::sleep_for(std::chrono::milliseconds(12));
 			if (aim_no_recoil == 1)
 			{
-				uint64_t LocalPlayer = mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT);
+				uint64_t LocalPlayer = apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
 				if (LocalPlayer == 0) continue;
 				last_sway_counter++;
 				if (last_sway_counter > 10000)
 					last_sway_counter = 86;
-				int attackState = mem.Read<int>(g_Base + OFFSET_IS_ATTACKING);
+				int attackState = apex_mem.Read<int>(g_Base + OFFSET_IS_ATTACKING, attackState);
 				if (attackState != 5) {
 					if (last_sway.x != 0 && last_sway_counter > 85) {	// ~ about 1 second between shot is considered semi-auto so we keep last_sway
 						last_sway.x = 0;
@@ -643,7 +640,7 @@ static void RecoilLoop(WinProcess& mem)
 					continue; // is not firing
 				}
 
-				Entity LPlayer = getEntity(mem, LocalPlayer);
+				Entity LPlayer = getEntity(LocalPlayer);
 				Vector ViewAngles = LPlayer.GetViewAngles();
 				Vector SwayAngles = LPlayer.GetSwayAngles();
 
@@ -655,11 +652,9 @@ static void RecoilLoop(WinProcess& mem)
 				// reduce recoil angles by last recoil as sway is continous
 				ViewAngles.x -= ((recoilAngles.x - last_sway.x) * recoil_control);
 				ViewAngles.y -= ((recoilAngles.y - last_sway.y) * recoil_control);
-				LPlayer.SetViewAngles(mem, ViewAngles);
+				LPlayer.SetViewAngles(ViewAngles);
 				last_sway = recoilAngles;
 				last_sway_counter = 0;
-
-
 			}
 		}
 	}
@@ -678,7 +673,7 @@ static void printToPipe(std::string msg, bool clearShell = false)
 	write(shellOut, buf, strlen(buf)+1);
 }
 
-static void DebugLoop(WinProcess& mem)
+static void DebugLoop()
 {
 	while (DEBUG_PRINT)
 	{
@@ -686,21 +681,21 @@ static void DebugLoop(WinProcess& mem)
 		while (g_Base != 0)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-			uint64_t LocalPlayer = mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT);
+			uint64_t LocalPlayer = apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
 			if (LocalPlayer == 0) continue;
 
-			Entity LPlayer = getEntity(mem, LocalPlayer);
+			Entity LPlayer = getEntity(LocalPlayer);
 
-			int attackState = mem.Read<int>(g_Base + OFFSET_IS_ATTACKING);
+			int attackState = apex_mem.Read<int>(g_Base + OFFSET_IS_ATTACKING, attackState);
 			Vector LocalCamera = LPlayer.GetCamPos();
 			Vector ViewAngles = LPlayer.GetViewAngles();
 			Vector SwayAngles = LPlayer.GetSwayAngles();
 
-			uint64_t wephandle = mem.Read<uint64_t>(LocalPlayer + OFFSET_WEAPON);
+			uint64_t wephandle = apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_WEAPON, wephandle);
 			wephandle &= 0xffff;
 			uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
-			uint64_t wep_entity = mem.Read<uint64_t>(entitylist + (wephandle << 5));
-			int ammoInClip = mem.Read<int>(wep_entity + OFFSET_AMMO_IN_CLIP);
+			uint64_t wep_entity = apex_mem.Read<uint64_t>(entitylist + (wephandle << 5), wep_entity);
+			int ammoInClip = apex_mem.Read<int>(wep_entity + OFFSET_AMMO_IN_CLIP, ammoInClip);
 
 			printToPipe("Attack State:\t" + std::to_string(attackState) + "\n", true);
 			printToPipe("Local Camera:\t" + std::to_string(LocalCamera.x) + "." + std::to_string(LocalCamera.y) + "." + std::to_string(LocalCamera.z) + "\n");
@@ -711,179 +706,115 @@ static void DebugLoop(WinProcess& mem)
 	}
 }
 
-__attribute__((constructor))
-static void init()
+int main()
 {
-	FILE* out = stdout;
 	const char* cl_proc = "client_ap.exe";
-	const char* ap_proc = "r5apex.exe";
-	int lostClientCount = 10;
+	const char* ap_proc = "R5Apex.exe";
+	//const char* ap_proc = "EasyAntiCheat_launcher.exe";
 
-	pid_t pid;
-#if (LMODE() == MODE_EXTERNAL())
-	FILE* pipe = popen("pidof qemu-system-x86_64", "r");
-	fscanf(pipe, "%d", &pid);
-	pclose(pipe);
-#else
-	out = fopen("/tmp/testr.txt", "w");
-	pid = getpid();
-#endif
-	fprintf(out, "Using Mode: %s\n", TOSTRING(LMODE));
+	//Client "add" offset
+	uint64_t add_off = 0xABCDE;
+	
+	// start external terminal and open pipe to print to it
+	if (DEBUG_PRINT) {
+		system("gnome-terminal -- cat /tmp/myfifo");
+		mkfifo(printPipe, 0666);
+		shellOut = open(printPipe, O_WRONLY);
+	}
 
-	dfile = out;
 
-	try
+	std::thread aimbot_thr;
+	std::thread actions_thr;
+	std::thread itemglow_thr;
+	std::thread vars_thr;
+	std::thread recoil_thr;
+	std::thread debug_thr;
+	
+	while(active)
 	{
-		printf("\nStarting client context...\n");
-		WinContext ctx_client(pid);
-		printf("\nStarting apex context...\n");
-		WinContext ctx_apex(pid);
-		printf("\nStarting refresh process list context...\n");
-		WinContext ctx_refresh(pid);
-		printf("\n");
-		bool apex_found = false;
-		bool client_found = false;
-		//Client "add" offset
-		uint64_t add_off = 0xABCDE;
-		
-		// start external terminal and open pipe to print to it
-		if (DEBUG_PRINT) {
-			system("gnome-terminal -- cat /tmp/myfifo");
-			mkfifo(printPipe, 0666);
-			shellOut = open(printPipe, O_WRONLY);
-		}
-
-		while(active)
+		if(apex_mem.get_proc_status() != process_status::FOUND_READY)
 		{
-			if(!apex_found)
+			if(aim_t)
 			{
 				aim_t = false;
 				actions_t = false;
 				item_t = false;
-				std::this_thread::sleep_for(std::chrono::seconds(1));
-				printf("Searching apex process...\n");
-				ctx_apex.processList.Refresh();
-				for (auto& i : ctx_apex.processList)
-				{
-					if (!strcasecmp(ap_proc, i.proc.name))
-					{
-						PEB peb = i.GetPeb();
-						short magic = i.Read<short>(peb.ImageBaseAddress);
-						g_Base = peb.ImageBaseAddress;
-						if (g_Base != 0)
-						{
-							apex_found = true;
-							fprintf(out, "\nApex found %lx:\t%s\n", i.proc.pid, i.proc.name);
-							fprintf(out, "\tBase:\t%lx\tMagic:\t%hx (valid: %hhx)\n", peb.ImageBaseAddress, magic, (char)(magic == IMAGE_DOS_SIGNATURE));
-							std::thread aimbot(AimbotLoop, std::ref(i));
-							std::thread actions(DoActions, std::ref(i));
-							std::thread itemglow(item_glow_t, std::ref(i));
-							std::thread recoil(RecoilLoop, std::ref(i));
+				recoil_t = false;
+				g_Base = 0;
 
-							if (DEBUG_PRINT) {
-								std::thread debug(DebugLoop, std::ref(i));
-								debug.detach();
-							}
-
-							aimbot.detach();
-							actions.detach();
-							itemglow.detach();
-							recoil.detach();
-
-						}
-					}
-				}
+				aimbot_thr.~thread();
+				actions_thr.~thread();
+				itemglow_thr.~thread();
+				recoil_thr.~thread();
+				debug_thr.~thread();
+				
 			}
 
-			if(!client_found)
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+			printf("Searching for apex process...\n");
+
+			apex_mem.open_proc(ap_proc);
+
+			if(apex_mem.get_proc_status() == process_status::FOUND_READY)
 			{
-				vars_t = false;
-				std::this_thread::sleep_for(std::chrono::seconds(1));
-				printf("Searching client process...\n");
-				lostClientCount--;
-				ctx_client.processList.Refresh();
-				for (auto& i : ctx_client.processList)
-				{
-					if (!strcasecmp(cl_proc, i.proc.name))
-					{	
-						PEB peb = i.GetPeb();
-						short magic = i.Read<short>(peb.ImageBaseAddress);
-						c_Base = peb.ImageBaseAddress;
-						if(c_Base!=0)
-						{
-							client_found = true;
-							fprintf(out, "\nClient found %lx:\t%s\n", i.proc.pid, i.proc.name);
-							fprintf(out, "\tBase:\t%lx\tMagic:\t%hx (valid: %hhx)\n", peb.ImageBaseAddress, magic, (char)(magic == IMAGE_DOS_SIGNATURE));
-							std::thread vars(set_vars, std::ref(i), c_Base + add_off);
-							vars.detach();
-						}
-					}
-				}
-			}
+				g_Base = apex_mem.get_proc_baseaddr();
+				printf("\nApex process found\n");
+				printf("Base: %lx\n", g_Base);
 
-			if(apex_found || client_found)
-			{
-				apex_found = false;
-				//client_found = false;
-				std::this_thread::sleep_for(std::chrono::seconds(1));
-				ctx_refresh.processList.Refresh();
-				for (auto& i : ctx_refresh.processList)
-				{
-					if (!strcasecmp(cl_proc, i.proc.name))
-					{
-						PEB peb = i.GetPeb();
-						if(peb.ImageBaseAddress != 0)
-						{
-							if(vars_t)
-								client_found = true;
-						}
-					}
+				aimbot_thr = std::thread(AimbotLoop);
+				actions_thr = std::thread(DoActions);
+				itemglow_thr = std::thread(item_glow_t);
+				recoil_thr = std::thread(RecoilLoop);
 
-					if (!strcasecmp(ap_proc, i.proc.name))
-					{
-						PEB peb = i.GetPeb();
-						if(peb.ImageBaseAddress != 0)
-						{
-							if(actions_t)
-								apex_found = true;
-						}
-					}
+				if (DEBUG_PRINT)
+				{
+					debug_thr = std::thread(DebugLoop);
+					debug_thr.detach();
 				}
 
-				if(!apex_found && !client_found)
-				{
-					g_Base = 0;
-					c_Base = 0;
-					active = false;
-				}
-				else
-				{
-					if(!apex_found)
-					{
-						g_Base = 0;
-					}
-
-					if(!client_found)
-					{
-						c_Base = 0;
-					}
-				}
-			}
-
-			if (lostClientCount == 0) {
-				printf("Lost the client application!");
-				active = false;
+				aimbot_thr.detach();
+				actions_thr.detach();
+				itemglow_thr.detach();
+				recoil_thr.detach();
 			}
 		}
-	} catch (VMException& e)
-	{
-		fprintf(out, "Initialization error: %d\n", e.value);
-	}
-	fclose(out);
-	close(shellOut);
-}
+		else
+		{
+			apex_mem.check_proc();
+		}
 
-int main()
-{
+		if(client_mem.get_proc_status() != process_status::FOUND_READY)
+		{
+			if(vars_t)
+			{
+				vars_t = false;
+				c_Base = 0;
+
+				vars_thr.~thread();
+			}
+			
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+			printf("Searching for client process...\n");
+
+			client_mem.open_proc(cl_proc);
+
+			if(client_mem.get_proc_status() == process_status::FOUND_READY)
+			{
+				c_Base = client_mem.get_proc_baseaddr();
+				printf("\nClient process found\n");
+				printf("Base: %lx\n", c_Base);
+
+				vars_thr = std::thread(set_vars, c_Base + add_off);
+				vars_thr.detach();
+			}
+		}
+		else
+		{
+			client_mem.check_proc();
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+
 	return 0;
 }

@@ -1,22 +1,5 @@
 #include "main.h"
 
-typedef struct player
-{
-	float dist = 0;
-	int entity_team = 0;
-	float boxMiddle = 0;
-	float h_y = 0;
-	float width = 0;
-	float height = 0;
-	float b_x = 0;
-	float b_y = 0;
-	bool knocked = false;
-	bool visible = false;
-	int health = 0;
-	int shield = 0;
-	char name[33] = { 0 };
-}player;
-
 int aim_key = VK_RBUTTON;
 int alt_aim_key = 0x37;
 bool active = true;
@@ -29,8 +12,7 @@ float max_dist = 300.0f * 40.0f; //read
 float max_fov = 10.0f;
 int bone = 3;
 
-uint64_t add[15];
-player players[100];
+uint64_t add[16];
 
 int aim = 2; //read
 bool updateAim_pressed = 0;
@@ -57,6 +39,8 @@ bool toggleFiringRange_pressed = 0;
 bool ally_targets = false;
 bool toggleAllyTargets_pressed = 0;
 
+bool thirdPerson = false;
+bool toggleThirdPerson_pressed = 0;
 
 bool IsKeyDown(int vk)
 {
@@ -80,6 +64,7 @@ int main(int argc, char** argv)
 	add[12] = (uintptr_t)&bone;
 	add[13] = (uintptr_t)&firing_range;
 	add[14] = (uintptr_t)&ally_targets;
+	add[15] = (uintptr_t)&thirdPerson;
 
 	printf(XorStr("add_addr: 0x%I64x\n"), (uint64_t)&add[0] - (uint64_t)GetModuleHandle(NULL));
 	printf(XorStr("Waiting for host process...\n\n"));
@@ -91,6 +76,7 @@ int main(int argc, char** argv)
 	printf(XorStr(" Player Glow\t - \t Numpad *\n"));
 	printf(XorStr(" Firing Range\t - \t Numpad /\n"));
 	printf(XorStr(" Target Allies\t - \t Numpad 7\n"));
+	printf(XorStr(" 3rd-Person POV\t - \t Numpad 8\n")); 
 	printf(XorStr(" No-recoil\t - \t Numpad 9\n"));
 	printf(XorStr(" Max Distance\t - \t Arrows LEFT/RIGHT\n"));
 
@@ -168,6 +154,13 @@ int main(int argc, char** argv)
 		}
 		else if (!IsKeyDown(VK_DIVIDE) && toggleFiringRange_pressed == 1) { toggleFiringRange_pressed = 0; }
 
+		if (IsKeyDown(VK_NUMPAD8) && toggleThirdPerson_pressed == 0) // NUM-8/ key
+		{
+			toggleThirdPerson_pressed = 1;
+			thirdPerson = !thirdPerson;
+		}
+		else if (!IsKeyDown(VK_NUMPAD8) && toggleThirdPerson_pressed == 1) { toggleThirdPerson_pressed = 0; }
+		
 		if (IsKeyDown(VK_ADD) && incSmooth_pressed == 0) 
 		{
 			incSmooth_pressed = 1;

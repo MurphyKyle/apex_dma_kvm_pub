@@ -1,14 +1,14 @@
 #include "prediction.h"
-float maxHorizontalDistFromBone = 5.0f;
-float maxVerticalDistFromBone = 10.0f;
 
-bool Entity::Observing(WinProcess& mem, uint64_t entitylist)
+extern Memory apex_mem;
+
+bool Entity::Observing(uint64_t entitylist)
 {
 	/*uint64_t index = *(uint64_t*)(buffer + OFFSET_OBSERVING_TARGET);
 	index &= ENT_ENTRY_MASK;
 	if (index > 0)
 	{
-		uint64_t centity2 = mem.Read<uint64_t>(entitylist + ((uint64_t)index << 5));
+		uint64_t centity2 = apex_mem.Read<uint64_t>(entitylist + ((uint64_t)index << 5));
 		return centity2;
 	}
 	return 0;*/
@@ -65,14 +65,14 @@ float Entity::lastVisTime()
   return *(float*)(buffer + OFFSET_VISIBLE_TIME);
 }
 
-Vector Entity::getBonePosition(WinProcess& mem, int id)
+Vector Entity::getBonePosition(int id)
 {
 	Vector position = getPosition();
 	uintptr_t boneArray = *(uintptr_t*)(buffer + OFFSET_BONES);
 	Vector bone = Vector();
 	uint32_t boneloc = (id * 0x30);
 	Bone bo = {};
-	bo = mem.Read<Bone>(boneArray + boneloc);
+	apex_mem.Read<Bone>(boneArray + boneloc, bo);
 	bone.x = bo.x + position.x;
 	bone.y = bo.y + position.y;
 	bone.z = bo.z + position.z;
@@ -104,38 +104,36 @@ bool Entity::isZooming()
 	return *(int*)(buffer + OFFSET_ZOOMING) == 1;
 }
 
-void Entity::enableGlow(WinProcess& mem, GColor color)
+void Entity::enableGlow(GColor color)
 {
-	mem.Write<GlowMode>(ptr + GLOW_TYPE, { 101,102,96,90 });
-	mem.Write<GColor>(ptr + GLOW_COLOR, color);
+	apex_mem.Write<GlowMode>(ptr + GLOW_TYPE, { 101,102,96,90 });
+	apex_mem.Write<GColor>(ptr + GLOW_COLOR, color);
 
 	float currentEntityTime = 5000.f;
-	mem.Write<float>(ptr + GLOW_DISTANCE, 20000.f);
-	mem.Write<float>(ptr + GLOW_LIFE_TIME, currentEntityTime);
+	apex_mem.Write<float>(ptr + GLOW_DISTANCE, 20000.f);
+	apex_mem.Write<float>(ptr + GLOW_LIFE_TIME, currentEntityTime);
 
 	currentEntityTime -= 1.f;
 
-	mem.Write<int>(ptr + OFFSET_GLOW_ENABLE_GLOW_CONTEXT, 1);
-	mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE, 1);
-	mem.Write<Fade>(ptr + GLOW_FADE, { 872415232, 872415232, currentEntityTime, currentEntityTime, currentEntityTime, currentEntityTime });
+	apex_mem.Write<int>(ptr + OFFSET_GLOW_ENABLE_GLOW_CONTEXT, 1);
+	apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE, 1);
+	apex_mem.Write<Fade>(ptr + GLOW_FADE, { 872415232, 872415232, currentEntityTime, currentEntityTime, currentEntityTime, currentEntityTime });
 }
 
-void Entity::disableGlow(WinProcess& mem)
+void Entity::disableGlow()
 {
-	//mem.Write<int>(ptr + OFFSET_GLOW_T1, 0);
-	//mem.Write<int>(ptr + OFFSET_GLOW_T2, 0);
 	mem.Write<int>(ptr + OFFSET_GLOW_ENABLE_GLOW_CONTEXT, 0);
 	//mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS_GLOW_VISIBLE_TYPE, 5);
 }
 
-void Entity::SetViewAngles(WinProcess& mem, SVector angles)
+void Entity::SetViewAngles(SVector angles)
 {
-	mem.Write<SVector>(ptr + OFFSET_VIEWANGLES, angles);
+	apex_mem.Write<SVector>(ptr + OFFSET_VIEWANGLES, angles);
 }
 
-void Entity::SetViewAngles(WinProcess& mem, Vector& angles)
+void Entity::SetViewAngles(Vector& angles)
 {
-	SetViewAngles(mem, SVector(angles));
+	SetViewAngles(SVector(angles));
 }
 
 Vector Entity::GetCamPos()
@@ -148,10 +146,12 @@ Vector Entity::GetRecoil()
 	return *(Vector*)(buffer + OFFSET_AIMPUNCH);
 }
 
-void Entity::get_name(WinProcess& mem, uint64_t g_Base, uint64_t index, char* name)
+void Entity::get_name(uint64_t g_Base, uint64_t index, char* name)
 {
 	index *= 0x10;
-	mem.ReadMem(mem.Read<uint64_t>(g_Base + OFFSET_NAME_LIST + index), (uint64_t)name, 32);
+    uint64_t name_ptr = 0;
+    apex_mem.Read<uint64_t>(g_Base + OFFSET_NAME_LIST + index, name_ptr);
+	apex_mem.ReadArray<char>(name_ptr, name, 32);
 }
 
 bool Item::isItem()
@@ -164,14 +164,14 @@ bool Item::isGlowing()
 	return *(int*)(buffer + OFFSET_ITEM_GLOW) == 1363184265;
 }
 
-void Item::enableGlow(WinProcess& mem)
+void Item::enableGlow()
 {
-	mem.Write<int>(ptr + OFFSET_ITEM_GLOW, 1363184265);
+	apex_mem.Write<int>(ptr + OFFSET_ITEM_GLOW, 1363184265);
 }
 
-void Item::disableGlow(WinProcess& mem)
+void Item::disableGlow()
 {
-	mem.Write<int>(ptr + OFFSET_ITEM_GLOW, 1411417991);
+	apex_mem.Write<int>(ptr + OFFSET_ITEM_GLOW, 1411417991);
 }
 
 Vector Item::getPosition()
@@ -188,14 +188,14 @@ float CalculateFov(Entity& from, Entity& target)
 	return Math::GetFov2(ViewAngles, Angle);
 }
 
-Vector CalculateBestBoneAim(WinProcess& mem, Entity& from, Entity& target, float max_fov, int bone, int smooth, int aim_no_recoil)
+Vector CalculateBestBoneAim(Entity& from, Entity& target, float max_fov, int bone, int smooth, int aim_no_recoil)
 {
 	Vector LocalCamera = from.GetCamPos();
-	Vector TargetBonePosition = target.getBonePosition(mem, bone);
+	Vector TargetBonePosition = target.getBonePosition(bone);
 	Vector CalculatedAngles = Vector(0, 0, 0);
 	
 	WeaponXEntity curweap = WeaponXEntity();
-	curweap.update(mem, from.ptr);
+	curweap.update(from.ptr);
 	float BulletSpeed = curweap.get_projectile_speed();
 	float BulletGrav = curweap.get_projectile_gravity();
 	float zoom_fov = curweap.get_zoom_fov();
@@ -209,7 +209,7 @@ Vector CalculateBestBoneAim(WinProcess& mem, Entity& from, Entity& target, float
 	//simple aim prediction
 	if (BulletSpeed > 1.f)
 	{
-		Vector LocalBonePosition = from.getBonePosition(mem, bone);
+		Vector LocalBonePosition = from.getBonePosition(bone);
 		float VerticalTime = TargetBonePosition.DistTo(LocalBonePosition) / BulletSpeed;
 		TargetBonePosition.z += (BulletGrav * 0.5f) * (VerticalTime * VerticalTime);
 
@@ -252,19 +252,19 @@ Vector CalculateBestBoneAim(WinProcess& mem, Entity& from, Entity& target, float
 	return SmoothedAngles;
 }
 
-Entity getEntity(WinProcess& mem, uintptr_t ptr)
+Entity getEntity(uintptr_t ptr)
 {
 	Entity entity = Entity();
 	entity.ptr = ptr;
-	mem.ReadMem(ptr, (uintptr_t)entity.buffer, sizeof(entity.buffer));
+	apex_mem.ReadArray<uint8_t>(ptr, entity.buffer, sizeof(entity.buffer));
 	return entity;
 }
 
-Item getItem(WinProcess& mem, uintptr_t ptr)
+Item getItem(uintptr_t ptr)
 {
 	Item entity = Item();
 	entity.ptr = ptr;
-	mem.ReadMem(ptr, (uintptr_t)entity.buffer, sizeof(entity.buffer));
+	apex_mem.ReadArray<uint8_t>(ptr, entity.buffer, sizeof(entity.buffer));
 	return entity;
 }
 
@@ -293,19 +293,24 @@ bool WorldToScreen(Vector from, float* m_vMatrix, int targetWidth, int targetHei
 	return true;
 }
 
-void WeaponXEntity::update(WinProcess& mem, uint64_t LocalPlayer)
+void WeaponXEntity::update(uint64_t LocalPlayer)
 {
     extern uint64_t g_Base;
 	uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
-	uint64_t wephandle = mem.Read<uint64_t>(LocalPlayer + OFFSET_WEAPON);
+	uint64_t wephandle = 0;
+    apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_WEAPON, wephandle);
 	
 	wephandle &= 0xffff;
 
-	uint64_t wep_entity = mem.Read<uint64_t>(entitylist + (wephandle << 5));
+	uint64_t wep_entity = 0;
+    apex_mem.Read<uint64_t>(entitylist + (wephandle << 5), wep_entity);
 
-	projectile_speed = mem.Read<float>(wep_entity + OFFSET_BULLET_SPEED);
-	projectile_scale = mem.Read<float>(wep_entity + OFFSET_BULLET_SCALE);
-	zoom_fov = mem.Read<float>(wep_entity + OFFSET_ZOOM_FOV);
+	projectile_speed = 0;
+    apex_mem.Read<float>(wep_entity + OFFSET_BULLET_SPEED, projectile_speed);
+	projectile_scale = 0;
+    apex_mem.Read<float>(wep_entity + OFFSET_BULLET_SCALE, projectile_scale);
+	zoom_fov = 0;
+    apex_mem.Read<float>(wep_entity + OFFSET_ZOOM_FOV, zoom_fov);
 }
 
 float WeaponXEntity::get_projectile_speed()
