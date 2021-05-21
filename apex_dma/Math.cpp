@@ -1,6 +1,6 @@
 #include "Math.h"
 
-void Math::NormalizeAngles(QAngle& angle)
+void Math::NormalizeAngles(Vector& angle)
 {
 	while (angle.x > 89.0f)
 		angle.x -= 180.f;
@@ -15,10 +15,10 @@ void Math::NormalizeAngles(QAngle& angle)
 		angle.y += 360.f;
 }
 
-QAngle Math::CalcAngle(const Vector& src, const Vector& dst)
+Vector Math::CalcAngle(const Vector& src, const Vector& dst)
 {
-	QAngle angle = QAngle();
-	SVector delta = SVector((src.x - dst.x), (src.y - dst.y), (src.z - dst.z));
+	Vector angle = Vector();
+	Vector delta = Vector((src.x - dst.x), (src.y - dst.y), (src.z - dst.z));
 
 	double hyp = sqrt(delta.x*delta.x + delta.y * delta.y);
 
@@ -30,9 +30,9 @@ QAngle Math::CalcAngle(const Vector& src, const Vector& dst)
 	return angle;
 }
 
-double Math::GetFov(const QAngle& viewAngle, const QAngle& aimAngle)
+double Math::GetFov(const Vector& viewAngle, const Vector& aimAngle)
 {
-	QAngle delta = aimAngle - viewAngle;
+	Vector delta = aimAngle - viewAngle;
 	NormalizeAngles(delta);
 
 	return sqrt(pow(delta.x, 2.0f) + pow(delta.y, 2.0f));

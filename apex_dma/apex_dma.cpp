@@ -556,7 +556,7 @@ static void AimbotLoop()
 				apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
 				if (LocalPlayer == 0) continue;
 				Entity LPlayer = getEntity(LocalPlayer);
-				QAngle Angles = CalculateBestBoneAim(LPlayer, aimentity, max_fov);
+				Vector Angles = CalculateBestBoneAim(LPlayer, aimentity, max_fov);
 				if (Angles.x == 0 && Angles.y == 0)
 				{
 					lock=false;

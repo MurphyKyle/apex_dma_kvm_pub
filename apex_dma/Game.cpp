@@ -84,14 +84,14 @@ Vector Entity::getBonePosition(int id)
 	return bone;
 }
 
-QAngle Entity::GetSwayAngles()
+Vector Entity::GetSwayAngles()
 {
-	return *(QAngle*)(buffer + OFFSET_BREATH_ANGLES);
+	return *(Vector*)(buffer + OFFSET_BREATH_ANGLES);
 }
 
-QAngle Entity::GetViewAngles()
+Vector Entity::GetViewAngles()
 {
-	return *(QAngle*)(buffer + OFFSET_VIEWANGLES);
+	return *(Vector*)(buffer + OFFSET_VIEWANGLES);
 }
 
 Vector Entity::GetViewAnglesV()
@@ -125,14 +125,9 @@ void Entity::disableGlow()
 	apex_mem.Write<int>(ptr + OFFSET_GLOW_THROUGH_WALLS, 5);
 }
 
-void Entity::SetViewAngles(SVector angles)
+void Entity::SetViewAngles(Vector angles)
 {
-	apex_mem.Write<SVector>(ptr + OFFSET_VIEWANGLES, angles);
-}
-
-void Entity::SetViewAngles(QAngle& angles)
-{
-	SetViewAngles(SVector(angles));
+	apex_mem.Write<Vector>(ptr + OFFSET_VIEWANGLES, angles);
 }
 
 Vector Entity::GetCamPos()
@@ -140,9 +135,9 @@ Vector Entity::GetCamPos()
 	return *(Vector*)(buffer + OFFSET_CAMERAPOS);
 }
 
-QAngle Entity::GetRecoil()
+Vector Entity::GetRecoil()
 {
-	return *(QAngle*)(buffer + OFFSET_AIMPUNCH);
+	return *(Vector*)(buffer + OFFSET_AIMPUNCH);
 }
 
 void Entity::get_name(uint64_t g_Base, uint64_t index, char* name)
@@ -180,34 +175,34 @@ Vector Item::getPosition()
 
 float CalculateFov(Entity& from, Entity& target)
 {
-	QAngle ViewAngles = from.GetViewAngles();
+	Vector ViewAngles = from.GetViewAngles();
 	Vector LocalCamera = from.GetCamPos();
 	Vector EntityPosition = target.getPosition();
-	QAngle Angle = Math::CalcAngle(LocalCamera, EntityPosition);
+	Vector Angle = Math::CalcAngle(LocalCamera, EntityPosition);
 	return Math::GetFov(ViewAngles, Angle);
 }
 
-QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
+Vector CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 {
 	Entity target = getEntity(t);
 	if(firing_range)
 	{
 		if (!target.isAlive())
 		{
-			return QAngle(0, 0, 0);
+			return Vector(0, 0, 0);
 		}
 	}
 	else
 	{
 		if (!target.isAlive() || target.isKnocked())
 		{
-			return QAngle(0, 0, 0);
+			return Vector(0, 0, 0);
 		}
 	}
 	
 	Vector LocalCamera = from.GetCamPos();
 	Vector TargetBonePosition = target.getBonePosition(bone);
-	QAngle CalculatedAngles = QAngle(0, 0, 0);
+	Vector CalculatedAngles = Vector(0, 0, 0);
 	
 	WeaponXEntity curweap = WeaponXEntity();
 	curweap.update(from.ptr);
@@ -244,27 +239,27 @@ QAngle CalculateBestBoneAim(Entity& from, uintptr_t t, float max_fov)
 		Ctx.TargetVel = target.getAbsVelocity();
 
 		if (BulletPredict(Ctx))
-			CalculatedAngles = QAngle{Ctx.AimAngles.x, Ctx.AimAngles.y, 0.f};
+			CalculatedAngles = Vector{Ctx.AimAngles.x, Ctx.AimAngles.y, 0.f};
     }
 
-	if (CalculatedAngles == QAngle(0, 0, 0))
+	if (CalculatedAngles == Vector(0, 0, 0))
     	CalculatedAngles = Math::CalcAngle(LocalCamera, TargetBonePosition);
-	QAngle ViewAngles = from.GetViewAngles();
-	QAngle SwayAngles = from.GetSwayAngles();
+	Vector ViewAngles = from.GetViewAngles();
+	Vector SwayAngles = from.GetSwayAngles();
 	//remove sway and recoil
 	if(aim_no_recoil)
 		CalculatedAngles-=SwayAngles-ViewAngles;
 	Math::NormalizeAngles(CalculatedAngles);
-	QAngle Delta = CalculatedAngles - ViewAngles;
+	Vector Delta = CalculatedAngles - ViewAngles;
 	double fov = Math::GetFov(SwayAngles, CalculatedAngles);
 	if (fov > max_fov)
 	{
-		return QAngle(0, 0, 0);
+		return Vector(0, 0, 0);
 	}
 
 	Math::NormalizeAngles(Delta);
 
-	QAngle SmoothedAngles = ViewAngles + Delta/smooth;
+	Vector SmoothedAngles = ViewAngles + Delta/smooth;
 	return SmoothedAngles;
 }
 

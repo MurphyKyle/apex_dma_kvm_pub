@@ -32,16 +32,15 @@ public:
 	bool isGlowing();
 	bool isZooming();
 	Vector getAbsVelocity();
-	QAngle GetSwayAngles();
-	QAngle GetViewAngles();
+	Vector GetSwayAngles();
+	Vector GetViewAngles();
 	Vector GetCamPos();
-	QAngle GetRecoil();
+	Vector GetRecoil();
 	Vector GetViewAnglesV();
 
 	void enableGlow();
 	void disableGlow();
-	void SetViewAngles(SVector angles);
-	void SetViewAngles(QAngle& angles);
+	void SetViewAngles(Vector angles);
 	Vector getBonePosition(int id);
 	bool Observing(uint64_t entitylist);
 	void get_name(uint64_t g_Base, uint64_t index, char* name);
@@ -78,4 +77,4 @@ Entity getEntity(uintptr_t ptr);
 Item getItem(uintptr_t ptr);
 bool WorldToScreen(Vector from, float* m_vMatrix, int targetWidth, int targetHeight, Vector& to);
 float CalculateFov(Entity& from, Entity& target);
-QAngle CalculateBestBoneAim(Entity& from, uintptr_t target, float max_fov);
+Vector CalculateBestBoneAim(Entity& from, uintptr_t target, float max_fov);
