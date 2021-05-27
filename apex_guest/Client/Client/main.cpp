@@ -9,7 +9,7 @@ int allied_spectators = 1; //write
 bool aiming = false; //read
 uint64_t g_Base = 0; //write
 float max_dist = 300.0f * 40.0f; //read
-float max_fov = 10.0f;
+float max_fov = 5.0f;
 int bone = 3;
 
 uint64_t add[16];
@@ -17,7 +17,7 @@ uint64_t add[16];
 int aim = 2; //read
 bool updateAim_pressed = 0;
 
-int smooth = 20;
+int smooth = 50;
 bool incSmooth_pressed = 0;
 bool decSmooth_pressed = 0;
 
@@ -27,7 +27,7 @@ bool updateSafeLevel_pressed = 0;
 bool item_glow = true;
 bool toggleItems_pressed = 0;
 
-int player_glow = 1;
+int player_glow = 2;
 bool updatePlayerGlow_pressed = 0;
 
 int aim_no_recoil = 0; //  0= normal recoil, 1 = use recoil control, 2 = aimbot no recoil // when using recoil control , make sure the aimbot is off
@@ -165,7 +165,7 @@ int main(int argc, char** argv)
 		{
 			incSmooth_pressed = 1;
 			smooth += 1;
-			if (smooth > 25) smooth = 25;
+			if (smooth > 100) smooth = 100;
 		}
 		else if (!IsKeyDown(VK_ADD) && incSmooth_pressed == 1) { incSmooth_pressed = 0;	}
 		
@@ -173,7 +173,7 @@ int main(int argc, char** argv)
 		{
 			decSmooth_pressed = 1;
 			smooth -= 1;
-			if (smooth < 1) smooth = 1;
+			if (smooth < 20) smooth = 20;
 		}
 		else if (!IsKeyDown(VK_SUBTRACT) && decSmooth_pressed == 1) { decSmooth_pressed = 0; }
 

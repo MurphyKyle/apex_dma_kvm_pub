@@ -25,7 +25,7 @@ float max_dist = 300.0f*40.0f;	// ESP & Glow distance in meters (*40)
 int localTeamId = 0;
 int tmp_spec = 0, spectators = 0;
 int tmp_all_spec = 0, allied_spectators = 0;
-float max_fov = 10.0f;
+float max_fov = 5.0f;
 const int toRead = 100;
 int aim = 2; 					// 0 = off, 1 = on - no visibility check, 2 = on - use visibility check
 int player_glow = 2;			// 0 = off, 1 = on - not visible through walls, 2 = on - visible through walls
