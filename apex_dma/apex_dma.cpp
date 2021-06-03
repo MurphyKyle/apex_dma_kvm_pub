@@ -497,24 +497,41 @@ static void set_vars(uint64_t add_addr)
 	printf("Reading client vars...\n");
 	std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	//Get addresses of client vars
-	uint64_t spec_addr 			= client_mem.Read<uint64_t>(add_addr, spec_addr);
-	uint64_t all_spec_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t), all_spec_addr);
-	uint64_t aim_addr 			= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 2, aim_addr);
-	uint64_t safe_lev_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 3, safe_lev_addr);
-	uint64_t aiming_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 4, aiming_addr);
-	uint64_t g_Base_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 5, g_Base_addr);
-	uint64_t max_dist_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 6, max_dist_addr);
-	uint64_t item_glow_addr 	= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 7, item_glow_addr);
-	uint64_t player_glow_addr 	= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 8, player_glow_addr);
-	uint64_t aim_no_recoil_addr = client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 9, aim_no_recoil_addr);
-	uint64_t smooth_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 10, smooth_addr);
-	uint64_t max_fov_addr 		= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 11, max_fov_addr);
-	uint64_t bone_addr 			= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 12, bone_addr);
-	uint64_t firing_range_addr 	= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 13, firing_range_addr);
-	uint64_t target_allies_addr = client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 14, target_allies_addr);
-	uint64_t thirdPerson_addr 	= client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 15, thirdPerson_addr);
+	uint64_t spec_addr = 0;
+	client_mem.Read<uint64_t>(add_addr, spec_addr);
+	uint64_t all_spec_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t), all_spec_addr);
+	uint64_t aim_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 2, aim_addr);
+	uint64_t safe_lev_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 3, safe_lev_addr);
+	uint64_t aiming_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 4, aiming_addr);
+	uint64_t g_Base_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 5, g_Base_addr);
+	uint64_t max_dist_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 6, max_dist_addr);
+	uint64_t item_glow_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 7, item_glow_addr);
+	uint64_t player_glow_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 8, player_glow_addr);
+	uint64_t aim_no_recoil_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 9, aim_no_recoil_addr);
+	uint64_t smooth_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 10, smooth_addr);
+	uint64_t max_fov_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 11, max_fov_addr);
+	uint64_t bone_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 12, bone_addr);
+	uint64_t firing_range_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 13, firing_range_addr);
+	uint64_t target_allies_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 14, target_allies_addr);
+	uint64_t thirdPerson_addr = 0;
+	client_mem.Read<uint64_t>(add_addr + sizeof(uint64_t) * 15, thirdPerson_addr);
 
-	int tmp = client_mem.Read<int>(spec_addr, tmp);
+	int tmp = 0;
+	client_mem.Read<int>(spec_addr, tmp);
 	
 	if(tmp != 1)
 	{
