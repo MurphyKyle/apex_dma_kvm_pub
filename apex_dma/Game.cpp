@@ -8,7 +8,8 @@ bool Entity::Observing(uint64_t entitylist)
 	index &= ENT_ENTRY_MASK;
 	if (index > 0)
 	{
-		uint64_t centity2 = apex_mem.Read<uint64_t>(entitylist + ((uint64_t)index << 5));
+		uint64_t centity2 = 0;
+		apex_mem.Read<uint64_t>(entitylist + ((uint64_t)index << 5), centity2);
 		return centity2;
 	}
 	return 0;*/

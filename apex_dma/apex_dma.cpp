@@ -642,12 +642,17 @@ static void RecoilLoop()
 			std::this_thread::sleep_for(std::chrono::milliseconds(12));
 			if (aim_no_recoil == 1)
 			{
-				uint64_t LocalPlayer = apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+				uint64_t LocalPlayer = 0;
+				apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+
 				if (LocalPlayer == 0) continue;
 				last_sway_counter++;
 				if (last_sway_counter > 10000)
 					last_sway_counter = 86;
-				int attackState = apex_mem.Read<int>(g_Base + OFFSET_IS_ATTACKING, attackState);
+
+				int attackState = 0;
+				apex_mem.Read<int>(g_Base + OFFSET_IS_ATTACKING, attackState);
+
 				if (attackState != 5) {
 					if (last_sway.x != 0 && last_sway_counter > 85) {	// ~ about 1 second between shot is considered semi-auto so we keep last_sway
 						last_sway.x = 0;
@@ -698,21 +703,27 @@ static void DebugLoop()
 		while (g_Base != 0)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-			uint64_t LocalPlayer = apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+			uint64_t LocalPlayer = 0;
+			apex_mem.Read<uint64_t>(g_Base + OFFSET_LOCAL_ENT, LocalPlayer);
+
 			if (LocalPlayer == 0) continue;
 
 			Entity LPlayer = getEntity(LocalPlayer);
 
-			int attackState = apex_mem.Read<int>(g_Base + OFFSET_IS_ATTACKING, attackState);
+			int attackState = 0;
+			apex_mem.Read<int>(g_Base + OFFSET_IS_ATTACKING, attackState);
 			Vector LocalCamera = LPlayer.GetCamPos();
 			Vector ViewAngles = LPlayer.GetViewAngles();
 			Vector SwayAngles = LPlayer.GetSwayAngles();
 
-			uint64_t wephandle = apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_WEAPON, wephandle);
-			wephandle &= 0xffff;
+			uint64_t wepHandle = 0;
+			apex_mem.Read<uint64_t>(LocalPlayer + OFFSET_WEAPON, wepHandle);
+			wepHandle &= 0xffff;
 			uint64_t entitylist = g_Base + OFFSET_ENTITYLIST;
-			uint64_t wep_entity = apex_mem.Read<uint64_t>(entitylist + (wephandle << 5), wep_entity);
-			int ammoInClip = apex_mem.Read<int>(wep_entity + OFFSET_AMMO_IN_CLIP, ammoInClip);
+			uint64_t wep_entity = 0;
+			apex_mem.Read<uint64_t>(entitylist + (wepHandle << 5), wep_entity);
+			int ammoInClip = 0;
+			apex_mem.Read<int>(wep_entity + OFFSET_AMMO_IN_CLIP, ammoInClip);
 
 			printToPipe("Attack State:\t" + std::to_string(attackState) + "\n", true);
 			printToPipe("Local Camera:\t" + std::to_string(LocalCamera.x) + "." + std::to_string(LocalCamera.y) + "." + std::to_string(LocalCamera.z) + "\n");
